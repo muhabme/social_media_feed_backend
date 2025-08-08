@@ -3,6 +3,7 @@ from graphene_django import DjangoObjectType
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login
 from .models import UserProfile
+import graphql_jwt
 
 
 class UserType(DjangoObjectType):
@@ -184,6 +185,27 @@ class UpdateUserProfile(graphene.Mutation):
             )
 
 
+class ObtainJSONWebToken(graphql_jwt.JSONWebTokenMutation):
+    user = graphene.Field(UserType)
+
+    @classmethod
+    def resolve(cls, root, info, **kwargs):
+        return cls(user=info.context.user)
+
+
+class LogoutUser(graphene.Mutation):
+    success = graphene.Boolean()
+
+    def mutate(self, info):
+        request = info.context
+        request.session.flush()
+        return LogoutUser(success=True)
+
+
 class UserMutation(graphene.ObjectType):
-    create_user = CreateUser.Field()
+    create_user = CreateUser.Field()  # Register
+    token_auth = ObtainJSONWebToken.Field()  # Login
+    verify_token = graphql_jwt.Verify.Field()
+    refresh_token = graphql_jwt.Refresh.Field()
+    logout_user = LogoutUser.Field()
     update_user_profile = UpdateUserProfile.Field()

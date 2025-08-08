@@ -48,17 +48,8 @@ class CreatePost(graphene.Mutation):
     def mutate(self, info, content, image_url=None):
         user = info.context.user
 
-        # For development, create a test user if not authenticated
         if not user.is_authenticated:
-            # Create or get a test user for development
-            user, created = User.objects.get_or_create(
-                username="testuser",
-                defaults={
-                    "email": "test@example.com",
-                    "first_name": "Test",
-                    "last_name": "User",
-                },
-            )
+            raise Exception("Authentication required")
 
         try:
             post = Post.objects.create(author=user, content=content)

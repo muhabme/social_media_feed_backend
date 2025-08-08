@@ -103,16 +103,8 @@ class LikePost(graphene.Mutation):
     def mutate(self, info, post_id):
         user = info.context.user
 
-        # For development, create a test user if not authenticated
         if not user.is_authenticated:
-            user, created = User.objects.get_or_create(
-                username="testuser",
-                defaults={
-                    "email": "test@example.com",
-                    "first_name": "Test",
-                    "last_name": "User",
-                },
-            )
+            raise Exception("Authentication required")
 
         try:
             post = Post.objects.get(pk=post_id, is_active=True)
@@ -170,16 +162,8 @@ class CreateComment(graphene.Mutation):
     def mutate(self, info, post_id, content, parent_id=None):
         user = info.context.user
 
-        # For development, create a test user if not authenticated
         if not user.is_authenticated:
-            user, created = User.objects.get_or_create(
-                username="testuser",
-                defaults={
-                    "email": "test@example.com",
-                    "first_name": "Test",
-                    "last_name": "User",
-                },
-            )
+            raise Exception("Authentication required")
 
         try:
             post = Post.objects.get(pk=post_id, is_active=True)
@@ -223,16 +207,8 @@ class SharePost(graphene.Mutation):
     def mutate(self, info, post_id):
         user = info.context.user
 
-        # For development, create a test user if not authenticated
         if not user.is_authenticated:
-            user, created = User.objects.get_or_create(
-                username="testuser",
-                defaults={
-                    "email": "test@example.com",
-                    "first_name": "Test",
-                    "last_name": "User",
-                },
-            )
+            raise Exception("Authentication required")
 
         try:
             post = Post.objects.get(pk=post_id, is_active=True)
