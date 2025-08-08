@@ -4,12 +4,20 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login
 from .models import UserProfile
 import graphql_jwt
+from utils.pagination import paginate_queryset
 
 
 class UserType(DjangoObjectType):
     class Meta:
         model = User
         fields = ("id", "username", "email", "first_name", "last_name", "date_joined")
+
+
+class UserPaginationType(graphene.ObjectType):
+    items = graphene.List(UserType)
+    total_items = graphene.Int()
+    total_pages = graphene.Int()
+    current_page = graphene.Int()
 
 
 class UserProfileType(DjangoObjectType):
@@ -35,7 +43,11 @@ class UserWithProfileType(graphene.ObjectType):
 class UserQuery(graphene.ObjectType):
     me = graphene.Field(UserType)
     user = graphene.Field(UserType, id=graphene.Int(), username=graphene.String())
-    all_users = graphene.List(UserType)
+    all_users = graphene.Field(
+        UserPaginationType,
+        page=graphene.Int(required=False),
+        items_per_page=graphene.Int(required=False),
+    )
     user_profile = graphene.Field(UserProfileType, user_id=graphene.Int(required=True))
     user_with_profile = graphene.Field(
         UserWithProfileType, user_id=graphene.Int(required=True)
@@ -57,8 +69,10 @@ class UserQuery(graphene.ObjectType):
         except User.DoesNotExist:
             return None
 
-    def resolve_all_users(self, info):
-        return User.objects.all().order_by("username")
+    def resolve_all_users(self, info, page=1, items_per_page=10):
+        qs = User.objects.filter(is_active=True).order_by("-created_at")
+        data = paginate_queryset(qs, page, items_per_page)
+        return UserPaginationType(**data)
 
     def resolve_user_profile(self, info, user_id):
         try:

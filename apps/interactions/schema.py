@@ -3,6 +3,7 @@ from graphene_django import DjangoObjectType
 from django.contrib.auth.models import User
 from .models import Like, Comment, Share
 from apps.posts.models import Post
+from utils.pagination import paginate_queryset
 
 
 class LikeType(DjangoObjectType):
@@ -11,10 +12,24 @@ class LikeType(DjangoObjectType):
         fields = "__all__"
 
 
+class LikePaginationType(graphene.ObjectType):
+    items = graphene.List(LikeType)
+    total_items = graphene.Int()
+    total_pages = graphene.Int()
+    current_page = graphene.Int()
+
+
 class CommentType(DjangoObjectType):
     class Meta:
         model = Comment
         fields = "__all__"
+
+
+class CommentPaginationType(graphene.ObjectType):
+    items = graphene.List(CommentType)
+    total_items = graphene.Int()
+    total_pages = graphene.Int()
+    current_page = graphene.Int()
 
 
 class ShareType(DjangoObjectType):
@@ -23,48 +38,108 @@ class ShareType(DjangoObjectType):
         fields = "__all__"
 
 
+class SharePaginationType(graphene.ObjectType):
+    items = graphene.List(ShareType)
+    total_items = graphene.Int()
+    total_pages = graphene.Int()
+    current_page = graphene.Int()
+
+
 class InteractionQuery(graphene.ObjectType):
     # Like queries
-    post_likes = graphene.List(LikeType, post_id=graphene.Int(required=True))
-    user_likes = graphene.List(LikeType, user_id=graphene.Int(required=True))
+    post_likes = graphene.Field(
+        LikePaginationType,
+        post_id=graphene.Int(required=True),
+        page=graphene.Int(required=False),
+        items_per_page=graphene.Int(required=False),
+    )
+    user_likes = graphene.Field(
+        LikePaginationType,
+        user_id=graphene.Int(required=True),
+        page=graphene.Int(required=False),
+        items_per_page=graphene.Int(required=False),
+    )
 
     # Comment queries
-    post_comments = graphene.List(CommentType, post_id=graphene.Int(required=True))
-    user_comments = graphene.List(CommentType, user_id=graphene.Int(required=True))
-    comment_replies = graphene.List(CommentType, parent_id=graphene.Int(required=True))
+    post_comments = graphene.Field(
+        CommentPaginationType,
+        post_id=graphene.Int(required=True),
+        page=graphene.Int(required=False),
+        items_per_page=graphene.Int(required=False),
+    )
+    user_comments = graphene.Field(
+        CommentPaginationType,
+        user_id=graphene.Int(required=True),
+        page=graphene.Int(required=False),
+        items_per_page=graphene.Int(required=False),
+    )
+    comment_replies = graphene.Field(
+        CommentPaginationType,
+        parent_id=graphene.Int(required=True),
+        page=graphene.Int(required=False),
+        items_per_page=graphene.Int(required=False),
+    )
 
     # Share queries
-    post_shares = graphene.List(ShareType, post_id=graphene.Int(required=True))
-    user_shares = graphene.List(ShareType, user_id=graphene.Int(required=True))
+    post_shares = graphene.Field(
+        SharePaginationType,
+        post_id=graphene.Int(required=True),
+        page=graphene.Int(required=False),
+        items_per_page=graphene.Int(required=False),
+    )
+    user_shares = graphene.Field(
+        SharePaginationType,
+        user_id=graphene.Int(required=True),
+        page=graphene.Int(required=False),
+        items_per_page=graphene.Int(required=False),
+    )
 
     # Interaction stats
     post_interaction_stats = graphene.Field(
         lambda: InteractionStatsType, post_id=graphene.Int(required=True)
     )
 
-    def resolve_post_likes(self, info, post_id):
-        return Like.objects.filter(post_id=post_id).order_by("-created_at")
+    # Like resolvers
+    def resolve_post_likes(self, info, post_id, page=1, items_per_page=10):
+        qs = Like.objects.filter(post_id=post_id).order_by("-created_at")
+        data = paginate_queryset(qs, page, items_per_page)
+        return LikePaginationType(**data)
 
-    def resolve_user_likes(self, info, user_id):
-        return Like.objects.filter(user_id=user_id).order_by("-created_at")
+    def resolve_user_likes(self, info, user_id, page=1, items_per_page=10):
+        qs = Like.objects.filter(user_id=user_id).order_by("-created_at")
+        data = paginate_queryset(qs, page, items_per_page)
+        return LikePaginationType(**data)
 
-    def resolve_post_comments(self, info, post_id):
-        return Comment.objects.filter(
-            post_id=post_id, parent__isnull=True  # Only top-level comments
-        ).order_by("-created_at")
+    # Comment resolvers
+    def resolve_post_comments(self, info, post_id, page=1, items_per_page=10):
+        qs = Comment.objects.filter(post_id=post_id, parent__isnull=True).order_by(
+            "-created_at"
+        )
+        data = paginate_queryset(qs, page, items_per_page)
+        return CommentPaginationType(**data)
 
-    def resolve_user_comments(self, info, user_id):
-        return Comment.objects.filter(author_id=user_id).order_by("-created_at")
+    def resolve_user_comments(self, info, user_id, page=1, items_per_page=10):
+        qs = Comment.objects.filter(author_id=user_id).order_by("-created_at")
+        data = paginate_queryset(qs, page, items_per_page)
+        return CommentPaginationType(**data)
 
-    def resolve_comment_replies(self, info, parent_id):
-        return Comment.objects.filter(parent_id=parent_id).order_by("created_at")
+    def resolve_comment_replies(self, info, parent_id, page=1, items_per_page=10):
+        qs = Comment.objects.filter(parent_id=parent_id).order_by("created_at")
+        data = paginate_queryset(qs, page, items_per_page)
+        return CommentPaginationType(**data)
 
-    def resolve_post_shares(self, info, post_id):
-        return Share.objects.filter(post_id=post_id).order_by("-created_at")
+    # Share resolvers
+    def resolve_post_shares(self, info, post_id, page=1, items_per_page=10):
+        qs = Share.objects.filter(post_id=post_id).order_by("-created_at")
+        data = paginate_queryset(qs, page, items_per_page)
+        return SharePaginationType(**data)
 
-    def resolve_user_shares(self, info, user_id):
-        return Share.objects.filter(user_id=user_id).order_by("-created_at")
+    def resolve_user_shares(self, info, user_id, page=1, items_per_page=10):
+        qs = Share.objects.filter(user_id=user_id).order_by("-created_at")
+        data = paginate_queryset(qs, page, items_per_page)
+        return SharePaginationType(**data)
 
+    # Interaction stats resolver
     def resolve_post_interaction_stats(self, info, post_id):
         try:
             post = Post.objects.get(pk=post_id)

@@ -2,6 +2,7 @@ import graphene
 from graphene_django import DjangoObjectType
 from django.contrib.auth.models import User
 from .models import Post
+from utils.pagination import paginate_queryset
 
 
 class PostType(DjangoObjectType):
@@ -10,19 +11,31 @@ class PostType(DjangoObjectType):
         fields = "__all__"
 
 
-class UserType(DjangoObjectType):
-    class Meta:
-        model = User
-        fields = ("id", "username", "first_name", "last_name", "date_joined")
+class PostPaginationType(graphene.ObjectType):
+    items = graphene.List(PostType)
+    total_items = graphene.Int()
+    total_pages = graphene.Int()
+    current_page = graphene.Int()
 
 
 class PostQuery(graphene.ObjectType):
-    all_posts = graphene.List(PostType)
+    all_posts = graphene.Field(
+        PostPaginationType,
+        page=graphene.Int(required=False),
+        items_per_page=graphene.Int(required=False),
+    )
     post = graphene.Field(PostType, id=graphene.Int(required=True))
-    posts_by_user = graphene.List(PostType, user_id=graphene.Int(required=True))
+    posts_by_user = graphene.Field(
+        PostPaginationType,
+        user_id=graphene.Int(required=True),
+        page=graphene.Int(required=False),
+        items_per_page=graphene.Int(required=False),
+    )
 
-    def resolve_all_posts(self, info):
-        return Post.objects.filter(is_active=True).order_by("-created_at")
+    def resolve_all_posts(self, info, page=1, items_per_page=10):
+        qs = Post.objects.filter(is_active=True).order_by("-created_at")
+        data = paginate_queryset(qs, page, items_per_page)
+        return PostPaginationType(**data)
 
     def resolve_post(self, info, id):
         try:
@@ -30,10 +43,12 @@ class PostQuery(graphene.ObjectType):
         except Post.DoesNotExist:
             return None
 
-    def resolve_posts_by_user(self, info, user_id):
-        return Post.objects.filter(author_id=user_id, is_active=True).order_by(
+    def resolve_posts_by_user(self, info, user_id, page=1, items_per_page=10):
+        qs = Post.objects.filter(author_id=user_id, is_active=True).order_by(
             "-created_at"
         )
+        data = paginate_queryset(qs, page, items_per_page)
+        return PostPaginationType(**data)
 
 
 class CreatePost(graphene.Mutation):
