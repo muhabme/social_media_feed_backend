@@ -5,6 +5,7 @@ from django.contrib.auth import authenticate, login
 from .models import UserProfile
 import graphql_jwt
 from utils.pagination import paginate_queryset
+from apps.users.models import Follow
 
 
 class UserType(DjangoObjectType):
@@ -15,6 +16,19 @@ class UserType(DjangoObjectType):
 
 class UserPaginationType(graphene.ObjectType):
     items = graphene.List(UserType)
+    total_items = graphene.Int()
+    total_pages = graphene.Int()
+    current_page = graphene.Int()
+
+
+class FollowType(DjangoObjectType):
+    class Meta:
+        model = Follow
+        fields = "__all__"
+
+
+class FollowPaginationType(graphene.ObjectType):
+    items = graphene.List(FollowType)
     total_items = graphene.Int()
     total_pages = graphene.Int()
     current_page = graphene.Int()
@@ -92,12 +106,62 @@ class UserQuery(graphene.ObjectType):
                 first_name=user.first_name,
                 last_name=user.last_name,
                 bio=profile.bio if profile else "",
-                followers_count=profile.followers_count if profile else 0,
-                following_count=profile.following_count if profile else 0,
+                followers_count=Follow.objects.filter(following_id=user.id).count(),
+                following_count=Follow.objects.filter(follower_id=user.id).count(),
                 date_joined=user.date_joined,
             )
         except User.DoesNotExist:
             return None
+
+
+class FollowQuery(graphene.ObjectType):
+    followers = graphene.Field(
+        FollowPaginationType,
+        user_id=graphene.Int(required=True),
+        page=graphene.Int(required=False),
+        items_per_page=graphene.Int(required=False),
+    )
+    following = graphene.Field(
+        FollowPaginationType,
+        user_id=graphene.Int(required=True),
+        page=graphene.Int(required=False),
+        items_per_page=graphene.Int(required=False),
+    )
+    is_following = graphene.Boolean(user_id=graphene.Int(required=True))
+    followers_count = graphene.Int(user_id=graphene.Int(required=True))
+    following_count = graphene.Int(user_id=graphene.Int(required=True))
+
+    def resolve_followers(self, info, user_id, page=1, items_per_page=10):
+        qs = User.objects.filter(
+            id__in=Follow.objects.filter(following_id=user_id).values_list(
+                "follower_id", flat=True
+            )
+        ).order_by("-date_joined")
+        data = paginate_queryset(qs, page, items_per_page)
+        return FollowPaginationType(**data)
+
+    def resolve_following(self, info, user_id, page=1, items_per_page=10):
+        qs = User.objects.filter(
+            id__in=Follow.objects.filter(follower_id=user_id).values_list(
+                "following_id", flat=True
+            )
+        ).order_by("-date_joined")
+        data = paginate_queryset(qs, page, items_per_page)
+        return FollowPaginationType(**data)
+
+    def resolve_is_following(self, info, user_id):
+        current_user = info.context.user
+        if not current_user.is_authenticated:
+            return False
+        return Follow.objects.filter(
+            follower=current_user, following_id=user_id
+        ).exists()
+
+    def resolve_followers_count(self, info, user_id):
+        return Follow.objects.filter(following_id=user_id).count()
+
+    def resolve_following_count(self, info, user_id):
+        return Follow.objects.filter(follower_id=user_id).count()
 
 
 class CreateUser(graphene.Mutation):
@@ -223,3 +287,57 @@ class UserMutation(graphene.ObjectType):
     refresh_token = graphql_jwt.Refresh.Field()
     logout_user = LogoutUser.Field()
     update_user_profile = UpdateUserProfile.Field()
+
+
+class FollowUser(graphene.Mutation):
+    class Arguments:
+        user_id = graphene.Int(required=True)
+
+    success = graphene.Boolean()
+    message = graphene.String()
+
+    def mutate(self, info, user_id):
+        current_user = info.context.user
+        if not current_user.is_authenticated:
+            return FollowUser(success=False, message="Authentication required")
+
+        if current_user.id == user_id:
+            return FollowUser(success=False, message="You cannot follow yourself")
+
+        target_user = User.objects.filter(id=user_id).first()
+        if not target_user:
+            return FollowUser(success=False, message="User not found")
+
+        obj, created = Follow.objects.get_or_create(
+            follower=current_user, following=target_user
+        )
+        if not created:
+            return FollowUser(success=False, message="Already following this user")
+
+        return FollowUser(success=True, message="Followed successfully")
+
+
+class UnfollowUser(graphene.Mutation):
+    class Arguments:
+        user_id = graphene.Int(required=True)
+
+    success = graphene.Boolean()
+    message = graphene.String()
+
+    def mutate(self, info, user_id):
+        current_user = info.context.user
+        if not current_user.is_authenticated:
+            return UnfollowUser(success=False, message="Authentication required")
+
+        deleted, _ = Follow.objects.filter(
+            follower=current_user, following_id=user_id
+        ).delete()
+
+        if deleted:
+            return UnfollowUser(success=True, message="Unfollowed successfully")
+        return UnfollowUser(success=False, message="You are not following this user")
+
+
+class FollowMutation(graphene.ObjectType):
+    follow_user = FollowUser.Field()
+    unfollow_user = UnfollowUser.Field()

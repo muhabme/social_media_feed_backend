@@ -8,7 +8,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.base")
 django.setup()
 
 from django.contrib.auth.models import User
-from apps.users.models import UserProfile
+from apps.users.models import UserProfile, Follow
 from apps.posts.models import Post
 from apps.interactions.models import Like, Comment, Share
 
@@ -26,8 +26,6 @@ def seed_users(n=10):
             user=user,
             bio=fake.text(max_nb_chars=120),
             profile_picture="",
-            followers_count=0,
-            following_count=0,
         )
         users.append(user)
     return users
@@ -70,17 +68,12 @@ def seed_follows(users):
         others = [u for u in users if u != user]
         following = random.sample(others, random.randint(0, len(others) // 2))
         for followed_user in following:
-            profile = user.userprofile
-            profile.following_count += 1
-            profile.save()
-
-            followed_profile = followed_user.userprofile
-            followed_profile.followers_count += 1
-            followed_profile.save()
+            Follow.objects.get_or_create(follower=user, following=followed_user)
 
 
 def run():
     print("Seeding database...")
+    Follow.objects.all().delete()
     User.objects.all().delete()
     Post.objects.all().delete()
     Like.objects.all().delete()
