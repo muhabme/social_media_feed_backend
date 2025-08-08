@@ -17,13 +17,13 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path
-from graphene_django.views import GraphQLView
+from .graphql_views import RateLimitedGraphQLView
 from graphql_api.schema import schema
 from django.views.generic import TemplateView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("graphql/", GraphQLView.as_view(graphiql=True, schema=schema)),
+    path("graphql/", RateLimitedGraphQLView.as_view(graphiql=True, schema=schema)),
     path(
         "playground/",
         TemplateView.as_view(template_name="playground.html"),
