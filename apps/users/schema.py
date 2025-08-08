@@ -2,11 +2,14 @@ import graphene
 from graphene_django import DjangoObjectType
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login
-from .models import UserProfile
+from .models import UserProfile, OTP, Follow
 import graphql_jwt
 from utils.pagination import paginate_queryset
-from apps.users.models import Follow
 from graphql_jwt.decorators import login_required
+from django.core.mail import send_mail
+from django.conf import settings
+from django.utils import timezone
+from datetime import timedelta
 
 
 class UserType(DjangoObjectType):
@@ -165,56 +168,6 @@ class FollowQuery(graphene.ObjectType):
         return Follow.objects.filter(follower_id=user_id).count()
 
 
-class CreateUser(graphene.Mutation):
-    class Arguments:
-        username = graphene.String(required=True)
-        email = graphene.String(required=True)
-        password = graphene.String(required=True)
-        first_name = graphene.String(required=False)
-        last_name = graphene.String(required=False)
-        bio = graphene.String(required=False)
-
-    user = graphene.Field(UserType)
-    success = graphene.Boolean()
-    message = graphene.String()
-
-    def mutate(
-        self, info, username, email, password, first_name="", last_name="", bio=""
-    ):
-        try:
-            # Check if user already exists
-            if User.objects.filter(username=username).exists():
-                return CreateUser(
-                    user=None, success=False, message="Username already exists"
-                )
-
-            if User.objects.filter(email=email).exists():
-                return CreateUser(
-                    user=None, success=False, message="Email already exists"
-                )
-
-            # Create user
-            user = User.objects.create_user(
-                username=username,
-                email=email,
-                password=password,
-                first_name=first_name,
-                last_name=last_name,
-            )
-
-            # Create user profile
-            UserProfile.objects.create(user=user, bio=bio)
-
-            return CreateUser(
-                user=user, success=True, message="User created successfully!"
-            )
-
-        except Exception as e:
-            return CreateUser(
-                user=None, success=False, message=f"Error creating user: {str(e)}"
-            )
-
-
 class UpdateUserProfile(graphene.Mutation):
     class Arguments:
         user_id = graphene.Int(required=True)
@@ -264,29 +217,7 @@ class UpdateUserProfile(graphene.Mutation):
             )
 
 
-class ObtainJSONWebToken(graphql_jwt.JSONWebTokenMutation):
-    user = graphene.Field(UserType)
-
-    @classmethod
-    def resolve(cls, root, info, **kwargs):
-        return cls(user=info.context.user)
-
-
-class LogoutUser(graphene.Mutation):
-    success = graphene.Boolean()
-
-    def mutate(self, info):
-        request = info.context
-        request.session.flush()
-        return LogoutUser(success=True)
-
-
 class UserMutation(graphene.ObjectType):
-    create_user = CreateUser.Field()  # Register
-    token_auth = ObtainJSONWebToken.Field()  # Login
-    verify_token = graphql_jwt.Verify.Field()
-    refresh_token = graphql_jwt.Refresh.Field()
-    logout_user = LogoutUser.Field()
     update_user_profile = UpdateUserProfile.Field()
 
 
@@ -340,3 +271,143 @@ class UnfollowUser(graphene.Mutation):
 class FollowMutation(graphene.ObjectType):
     follow_user = FollowUser.Field()
     unfollow_user = UnfollowUser.Field()
+
+
+class RegisterUser(graphene.Mutation):
+    user = graphene.Field(UserType)
+    success = graphene.Boolean()
+    message = graphene.String()
+
+    class Arguments:
+        username = graphene.String(required=True)
+        email = graphene.String(required=True)
+        password = graphene.String(required=True)
+        first_name = graphene.String()
+        last_name = graphene.String()
+        bio = graphene.String()
+
+    def mutate(
+        self, info, username, email, password, first_name="", last_name="", bio=""
+    ):
+        # Check existing user by username/email (your existing checks)
+        if User.objects.filter(username=username).exists():
+            return RegisterUser(success=False, message="Username already exists")
+        if User.objects.filter(email=email).exists():
+            return RegisterUser(success=False, message="Email already exists")
+
+        now = timezone.now()
+
+        # 1. Check OTPs sent today (from midnight to now)
+        start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        otp_count_today = OTP.objects.filter(
+            email=email, created_at__gte=start_of_day
+        ).count()
+        if otp_count_today >= 3:
+            return RegisterUser(
+                success=False, message="Maximum OTP requests reached for today"
+            )
+
+        # 2. Check if last OTP was sent less than 10 minutes ago
+        last_otp = OTP.objects.filter(email=email).order_by("-created_at").first()
+        if last_otp and (now - last_otp.created_at) < timedelta(minutes=10):
+            return RegisterUser(
+                success=False,
+                message="Please wait a few minutes before requesting another OTP",
+            )
+
+        # Generate and create OTP as before
+        otp_code = OTP.generate_otp()
+        OTP.objects.create(
+            email=email,
+            otp_code=otp_code,
+            data={
+                "username": username,
+                "email": email,
+                "password": password,
+                "first_name": first_name,
+                "last_name": last_name,
+                "bio": bio,
+            },
+        )
+
+        send_mail(
+            subject="Your OTP Code",
+            message=f"Your verification code is {otp_code}. It will expire in 10 minutes.",
+            from_email=settings.EMAIL_HOST_USER,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+
+        return RegisterUser(success=True, message="OTP sent to your email.")
+
+
+class VerifyEmailOTP(graphene.Mutation):
+    success = graphene.Boolean()
+    message = graphene.String()
+    user = graphene.Field(UserType)
+
+    class Arguments:
+        email = graphene.String(required=True)
+        otp_code = graphene.String(required=True)
+
+    def mutate(self, info, email, otp_code):
+        try:
+            otp_entry = OTP.objects.filter(email=email, otp_code=otp_code).first()
+            if not otp_entry:
+                return VerifyEmailOTP(success=False, message="Invalid OTP")
+
+            if otp_entry.is_expired():
+                otp_entry.delete()
+                return VerifyEmailOTP(success=False, message="OTP expired")
+
+            data = otp_entry.data
+
+            # Create user
+            from django.contrib.auth.models import User
+
+            user = User.objects.create_user(
+                username=data["username"],
+                email=data["email"],
+                password=data["password"],
+                first_name=data["first_name"],
+                last_name=data["last_name"],
+            )
+
+            # Create profile
+            UserProfile.objects.create(user=user, bio=data["bio"])
+
+            otp_entry.delete()
+            return VerifyEmailOTP(
+                success=True, message="User created successfully!", user=user
+            )
+
+        except Exception as e:
+            return VerifyEmailOTP(success=False, message=f"Error: {str(e)}")
+
+
+class ObtainJSONWebToken(graphql_jwt.JSONWebTokenMutation):
+    user = graphene.Field(UserType)
+
+    @classmethod
+    def resolve(cls, root, info, **kwargs):
+        return cls(user=info.context.user)
+
+
+class LogoutUser(graphene.Mutation):
+    success = graphene.Boolean()
+
+    def mutate(self, info):
+        request = info.context
+        request.session.flush()
+        return LogoutUser(success=True)
+
+
+class AuthMutation(graphene.ObjectType):
+    register_user = RegisterUser.Field()  # Register
+    verify_email_otp = VerifyEmailOTP.Field()  # Verify email to complete registration
+
+    token_auth = ObtainJSONWebToken.Field()  # Login
+    verify_token = graphql_jwt.Verify.Field()
+    refresh_token = graphql_jwt.Refresh.Field()
+
+    logout_user = LogoutUser.Field()

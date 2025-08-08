@@ -160,3 +160,12 @@ GRAPHQL_JWT = {
 # Rate limiting settings
 RATELIMIT_USE_CACHE = "default"
 RATELIMIT_ENABLE = True
+
+
+# Email backend for production
+EMAIL_BACKEND = "apps.core.emails_service.EmailBackend"
+EMAIL_HOST = config("EMAIL_HOST")
+EMAIL_PORT = config("EMAIL_PORT", cast=int)
+EMAIL_USE_TLS = config("EMAIL_USE_TLS", cast=bool)
+EMAIL_HOST_USER = config("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")

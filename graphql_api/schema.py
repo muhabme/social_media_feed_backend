@@ -1,6 +1,12 @@
 import graphene
 from apps.posts.schema import PostQuery, PostMutation
-from apps.users.schema import UserQuery, UserMutation, FollowQuery, FollowMutation
+from apps.users.schema import (
+    AuthMutation,
+    UserQuery,
+    UserMutation,
+    FollowQuery,
+    FollowMutation,
+)
 from apps.interactions.schema import InteractionQuery, InteractionMutation
 
 
@@ -9,7 +15,12 @@ class Query(PostQuery, UserQuery, FollowQuery, InteractionQuery, graphene.Object
 
 
 class Mutation(
-    PostMutation, UserMutation, FollowMutation, InteractionMutation, graphene.ObjectType
+    AuthMutation,
+    UserMutation,
+    FollowMutation,
+    PostMutation,
+    InteractionMutation,
+    graphene.ObjectType,
 ):
     pass
 
