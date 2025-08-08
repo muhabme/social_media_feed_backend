@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 from decouple import config
+from .redis import *
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -47,6 +49,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "graphene_django",
     "corsheaders",
+    "django_redis",
+    "django_ratelimit",
 ] + LOCAL_APPS
 
 MIDDLEWARE = [
@@ -149,5 +153,10 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 GRAPHQL_JWT = {
+    "JWT_EXPIRATION_DELTA": timedelta(days=7),
     "JWT_AUTH_HEADER_PREFIX": "Bearer",
 }
+
+# Rate limiting settings
+RATELIMIT_USE_CACHE = "default"
+RATELIMIT_ENABLE = True

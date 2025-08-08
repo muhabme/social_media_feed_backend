@@ -6,6 +6,7 @@ from .models import UserProfile
 import graphql_jwt
 from utils.pagination import paginate_queryset
 from apps.users.models import Follow
+from graphql_jwt.decorators import login_required
 
 
 class UserType(DjangoObjectType):
@@ -296,10 +297,9 @@ class FollowUser(graphene.Mutation):
     success = graphene.Boolean()
     message = graphene.String()
 
+    @login_required
     def mutate(self, info, user_id):
         current_user = info.context.user
-        if not current_user.is_authenticated:
-            return FollowUser(success=False, message="Authentication required")
 
         if current_user.id == user_id:
             return FollowUser(success=False, message="You cannot follow yourself")
@@ -324,10 +324,9 @@ class UnfollowUser(graphene.Mutation):
     success = graphene.Boolean()
     message = graphene.String()
 
+    @login_required
     def mutate(self, info, user_id):
         current_user = info.context.user
-        if not current_user.is_authenticated:
-            return UnfollowUser(success=False, message="Authentication required")
 
         deleted, _ = Follow.objects.filter(
             follower=current_user, following_id=user_id

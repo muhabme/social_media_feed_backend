@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from .models import Like, Comment, Share
 from apps.posts.models import Post
 from utils.pagination import paginate_queryset
+from graphql_jwt.decorators import login_required
 
 
 class LikeType(DjangoObjectType):
@@ -175,11 +176,9 @@ class LikePost(graphene.Mutation):
     message = graphene.String()
     is_liked = graphene.Boolean()
 
+    @login_required
     def mutate(self, info, post_id):
         user = info.context.user
-
-        if not user.is_authenticated:
-            raise Exception("Authentication required")
 
         try:
             post = Post.objects.get(pk=post_id, is_active=True)
@@ -234,11 +233,9 @@ class CreateComment(graphene.Mutation):
     success = graphene.Boolean()
     message = graphene.String()
 
+    @login_required
     def mutate(self, info, post_id, content, parent_id=None):
         user = info.context.user
-
-        if not user.is_authenticated:
-            raise Exception("Authentication required")
 
         try:
             post = Post.objects.get(pk=post_id, is_active=True)
@@ -279,11 +276,9 @@ class SharePost(graphene.Mutation):
     success = graphene.Boolean()
     message = graphene.String()
 
+    @login_required
     def mutate(self, info, post_id):
         user = info.context.user
-
-        if not user.is_authenticated:
-            raise Exception("Authentication required")
 
         try:
             post = Post.objects.get(pk=post_id, is_active=True)
