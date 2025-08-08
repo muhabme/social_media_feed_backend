@@ -5,6 +5,8 @@ from .models import Like, Comment, Share
 from apps.posts.models import Post
 from utils.pagination import paginate_queryset
 from graphql_jwt.decorators import login_required
+from django.db import transaction
+from django.db.models import F
 
 
 class LikeType(DjangoObjectType):
@@ -179,47 +181,29 @@ class LikePost(graphene.Mutation):
     @login_required
     def mutate(self, info, post_id):
         user = info.context.user
-
         try:
-            post = Post.objects.get(pk=post_id, is_active=True)
+            with transaction.atomic():
+                post = Post.objects.select_for_update().get(pk=post_id, is_active=True)
 
-            # Check if already liked
-            existing_like = Like.objects.filter(user=user, post=post).first()
+                existing = Like.objects.filter(user=user, post=post).first()
+                if existing:
+                    existing.delete()
+                    Post.objects.filter(pk=post.pk).update(
+                        likes_count=F("likes_count") - 1
+                    )
+                    return LikePost(
+                        success=True, message="Post unliked", is_liked=False, like=None
+                    )
 
-            if existing_like:
-                # Unlike (remove the like)
-                existing_like.delete()
-                # Update post's like count
-                post.likes_count = Like.objects.filter(post=post).count()
-                post.save()
-
-                return LikePost(
-                    like=None,
-                    success=True,
-                    message="Post unliked successfully!",
-                    is_liked=False,
-                )
-            else:
-                # Like the post
                 like = Like.objects.create(user=user, post=post)
-                # Update post's like count
-                post.likes_count = Like.objects.filter(post=post).count()
-                post.save()
-
+                Post.objects.filter(pk=post.pk).update(likes_count=F("likes_count") + 1)
                 return LikePost(
-                    like=like,
-                    success=True,
-                    message="Post liked successfully!",
-                    is_liked=True,
+                    success=True, message="Post liked", is_liked=True, like=like
                 )
 
         except Post.DoesNotExist:
             return LikePost(
-                like=None, success=False, message="Post not found", is_liked=False
-            )
-        except Exception as e:
-            return LikePost(
-                like=None, success=False, message=f"Error: {str(e)}", is_liked=False
+                success=False, message="Post not found", is_liked=False, like=None
             )
 
 
@@ -238,23 +222,26 @@ class CreateComment(graphene.Mutation):
         user = info.context.user
 
         try:
-            post = Post.objects.get(pk=post_id, is_active=True)
-            parent = None
+            with transaction.atomic():
+                post = Post.objects.select_for_update().get(pk=post_id, is_active=True)
+                parent = None
 
-            if parent_id:
-                parent = Comment.objects.get(pk=parent_id)
+                if parent_id:
+                    parent = Comment.objects.get(pk=parent_id)
 
-            comment = Comment.objects.create(
-                author=user, post=post, content=content, parent=parent
-            )
+                comment = Comment.objects.create(
+                    author=user, post=post, content=content, parent=parent
+                )
 
-            # Update post's comment count
-            post.comments_count = Comment.objects.filter(post=post).count()
-            post.save()
+                Post.objects.filter(pk=post.pk).update(
+                    comments_count=F("comments_count") - 1
+                )
 
-            return CreateComment(
-                comment=comment, success=True, message="Comment created successfully!"
-            )
+                return CreateComment(
+                    comment=comment,
+                    success=True,
+                    message="Comment created successfully!",
+                )
 
         except Post.DoesNotExist:
             return CreateComment(comment=None, success=False, message="Post not found")
@@ -281,25 +268,28 @@ class SharePost(graphene.Mutation):
         user = info.context.user
 
         try:
-            post = Post.objects.get(pk=post_id, is_active=True)
+            with transaction.atomic():
+                post = Post.objects.select_for_update().get(pk=post_id, is_active=True)
 
-            # Check if already shared
-            existing_share = Share.objects.filter(user=user, post=post).first()
+                # Check if already shared
+                existing_share = Share.objects.filter(user=user, post=post).first()
 
-            if existing_share:
-                return SharePost(
-                    share=existing_share, success=True, message="Post already shared!"
+                if existing_share:
+                    return SharePost(
+                        share=existing_share,
+                        success=True,
+                        message="Post already shared!",
+                    )
+
+                share = Share.objects.create(user=user, post=post)
+
+                Post.objects.filter(pk=post.pk).update(
+                    shares_count=F("shares_count") - 1
                 )
 
-            share = Share.objects.create(user=user, post=post)
-
-            # Update post's share count
-            post.shares_count = Share.objects.filter(post=post).count()
-            post.save()
-
-            return SharePost(
-                share=share, success=True, message="Post shared successfully!"
-            )
+                return SharePost(
+                    share=share, success=True, message="Post shared successfully!"
+                )
 
         except Post.DoesNotExist:
             return SharePost(share=None, success=False, message="Post not found")

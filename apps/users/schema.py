@@ -10,6 +10,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
+from django.db.models import Count
 
 
 class UserType(DjangoObjectType):
@@ -25,14 +26,8 @@ class UserPaginationType(graphene.ObjectType):
     current_page = graphene.Int()
 
 
-class FollowType(DjangoObjectType):
-    class Meta:
-        model = Follow
-        fields = "__all__"
-
-
 class FollowPaginationType(graphene.ObjectType):
-    items = graphene.List(FollowType)
+    items = graphene.List(UserType)
     total_items = graphene.Int()
     total_pages = graphene.Int()
     current_page = graphene.Int()
@@ -100,8 +95,17 @@ class UserQuery(graphene.ObjectType):
 
     def resolve_user_with_profile(self, info, user_id):
         try:
-            user = User.objects.get(pk=user_id)
-            profile = UserProfile.objects.filter(user=user).first()
+            user = (
+                User.objects.filter(pk=user_id)
+                .select_related("profile")
+                .annotate(
+                    followers_count=Count("follower_relationships", distinct=True),
+                    following_count=Count("following_relationships", distinct=True),
+                )
+                .first()
+            )
+            if not user:
+                return None
 
             return UserWithProfileType(
                 id=user.id,
@@ -109,9 +113,9 @@ class UserQuery(graphene.ObjectType):
                 email=user.email,
                 first_name=user.first_name,
                 last_name=user.last_name,
-                bio=profile.bio if profile else "",
-                followers_count=Follow.objects.filter(following_id=user.id).count(),
-                following_count=Follow.objects.filter(follower_id=user.id).count(),
+                bio=(user.profile.bio if hasattr(user, "profile") else ""),
+                followers_count=user.followers_count,
+                following_count=user.following_count,
                 date_joined=user.date_joined,
             )
         except User.DoesNotExist:
@@ -135,6 +139,7 @@ class FollowQuery(graphene.ObjectType):
     followers_count = graphene.Int(user_id=graphene.Int(required=True))
     following_count = graphene.Int(user_id=graphene.Int(required=True))
 
+    @login_required
     def resolve_followers(self, info, user_id, page=1, items_per_page=10):
         qs = User.objects.filter(
             id__in=Follow.objects.filter(following_id=user_id).values_list(
@@ -144,6 +149,7 @@ class FollowQuery(graphene.ObjectType):
         data = paginate_queryset(qs, page, items_per_page)
         return FollowPaginationType(**data)
 
+    @login_required
     def resolve_following(self, info, user_id, page=1, items_per_page=10):
         qs = User.objects.filter(
             id__in=Follow.objects.filter(follower_id=user_id).values_list(
@@ -153,6 +159,7 @@ class FollowQuery(graphene.ObjectType):
         data = paginate_queryset(qs, page, items_per_page)
         return FollowPaginationType(**data)
 
+    @login_required
     def resolve_is_following(self, info, user_id):
         current_user = info.context.user
         if not current_user.is_authenticated:
@@ -161,9 +168,11 @@ class FollowQuery(graphene.ObjectType):
             follower=current_user, following_id=user_id
         ).exists()
 
+    @login_required
     def resolve_followers_count(self, info, user_id):
         return Follow.objects.filter(following_id=user_id).count()
 
+    @login_required
     def resolve_following_count(self, info, user_id):
         return Follow.objects.filter(follower_id=user_id).count()
 
@@ -289,15 +298,12 @@ class RegisterUser(graphene.Mutation):
     def mutate(
         self, info, username, email, password, first_name="", last_name="", bio=""
     ):
-        # Check existing user by username/email (your existing checks)
         if User.objects.filter(username=username).exists():
             return RegisterUser(success=False, message="Username already exists")
         if User.objects.filter(email=email).exists():
             return RegisterUser(success=False, message="Email already exists")
 
         now = timezone.now()
-
-        # 1. Check OTPs sent today (from midnight to now)
         start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
         otp_count_today = OTP.objects.filter(
             email=email, created_at__gte=start_of_day
@@ -307,19 +313,15 @@ class RegisterUser(graphene.Mutation):
                 success=False, message="Maximum OTP requests reached for today"
             )
 
-        # 2. Check if last OTP was sent less than 10 minutes ago
         last_otp = OTP.objects.filter(email=email).order_by("-created_at").first()
         if last_otp and (now - last_otp.created_at) < timedelta(minutes=10):
             return RegisterUser(
-                success=False,
-                message="Please wait a few minutes before requesting another OTP",
+                success=False, message="Please wait before requesting another OTP"
             )
 
-        # Generate and create OTP as before
-        otp_code = OTP.generate_otp()
-        OTP.objects.create(
+        # Use new method to create OTP and get the plaintext code to send via email
+        otp_obj, otp_code = OTP.create_for_email(
             email=email,
-            otp_code=otp_code,
             data={
                 "username": username,
                 "email": email,
@@ -328,6 +330,7 @@ class RegisterUser(graphene.Mutation):
                 "last_name": last_name,
                 "bio": bio,
             },
+            max_attempts=5,
         )
 
         send_mail(
@@ -351,38 +354,47 @@ class VerifyEmailOTP(graphene.Mutation):
         otp_code = graphene.String(required=True)
 
     def mutate(self, info, email, otp_code):
-        try:
-            otp_entry = OTP.objects.filter(email=email, otp_code=otp_code).first()
-            if not otp_entry:
-                return VerifyEmailOTP(success=False, message="Invalid OTP")
+        otp_entry = (
+            OTP.objects.filter(email=email, used=False).order_by("-created_at").first()
+        )
+        if not otp_entry:
+            return VerifyEmailOTP(success=False, message="Invalid or expired OTP")
 
-            if otp_entry.is_expired():
-                otp_entry.delete()
+        if otp_entry.is_expired():
+            otp_entry.delete()
+            return VerifyEmailOTP(success=False, message="OTP expired")
+
+        is_valid, status = otp_entry.verify(otp_code)
+        if not is_valid:
+            if status == "already_used":
+                return VerifyEmailOTP(success=False, message="OTP already used")
+            if status == "max_attempts":
+                return VerifyEmailOTP(
+                    success=False, message="Maximum verification attempts reached"
+                )
+            if status == "expired":
                 return VerifyEmailOTP(success=False, message="OTP expired")
+            return VerifyEmailOTP(success=False, message="Invalid OTP")
 
-            data = otp_entry.data
-
-            # Create user
-            from django.contrib.auth.models import User
-
+        # OTP valid: create user and profile
+        data = otp_entry.data
+        try:
             user = User.objects.create_user(
                 username=data["username"],
                 email=data["email"],
                 password=data["password"],
-                first_name=data["first_name"],
-                last_name=data["last_name"],
+                first_name=data.get("first_name", ""),
+                last_name=data.get("last_name", ""),
             )
-
-            # Create profile
-            UserProfile.objects.create(user=user, bio=data["bio"])
-
+            UserProfile.objects.create(user=user, bio=data.get("bio", ""))
             otp_entry.delete()
             return VerifyEmailOTP(
                 success=True, message="User created successfully!", user=user
             )
-
         except Exception as e:
-            return VerifyEmailOTP(success=False, message=f"Error: {str(e)}")
+            return VerifyEmailOTP(
+                success=False, message=f"Error creating user: {str(e)}"
+            )
 
 
 class ObtainJSONWebToken(graphql_jwt.JSONWebTokenMutation):

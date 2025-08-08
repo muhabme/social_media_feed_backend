@@ -6,6 +6,9 @@ from .cache_service import feed_cache_service
 from apps.core.redis_service import redis_service
 from apps.users.models import User
 from graphql_jwt.decorators import login_required
+from math import ceil
+from apps.interactions.models import Comment
+from django.db.models import Prefetch
 
 
 class PostType(DjangoObjectType):
@@ -113,8 +116,12 @@ class PostQuery(graphene.ObjectType):
                     current_page=cached_result["current_page"],
                 )
 
-        qs = Post.objects.filter(author_id=user_id, is_active=True).order_by(
-            "-created_at"
+        qs = (
+            Post.objects.filter(author_id=user_id, is_active=True)
+            .order_by("-created_at")
+            .prefetch_related(
+                Prefetch("comments", queryset=Comment.objects.select_related("author"))
+            )
         )
         data = paginate_queryset(qs, page, items_per_page)
 
@@ -153,8 +160,12 @@ class PostQuery(graphene.ObjectType):
             )
 
         following_users = User.objects.filter(follower_relationships__follower=user)
-        qs = Post.objects.filter(author__in=following_users, is_active=True).order_by(
-            "-created_at"
+        qs = (
+            Post.objects.filter(author__in=following_users, is_active=True)
+            .order_by("-created_at")
+            .prefetch_related(
+                Prefetch("comments", queryset=Comment.objects.select_related("author"))
+            )
         )
 
         data = paginate_queryset(qs, page, items_per_page)
@@ -182,24 +193,33 @@ class PostQuery(graphene.ObjectType):
 
     @login_required
     def resolve_trending_posts(self, info, page=1, items_per_page=10):
-        """Get trending posts from Redis sorted set with pagination"""
         start = (page - 1) * items_per_page
         limit = items_per_page
 
         trending_ids = redis_service.get_top_from_sorted_set(
             "trending_posts", limit=start + limit
-        )[start : start + limit]
+        )
+        trending_ids = [str(i) for i in trending_ids]
 
         if not trending_ids:
-            return Post.objects.filter(is_active=True).order_by(
+            qs = Post.objects.filter(is_active=True).order_by(
                 "-likes_count", "-created_at"
             )[:limit]
+            return PostPaginationType(
+                items=list(qs), total_items=qs.count(), total_pages=1, current_page=page
+            )
 
         posts = Post.objects.filter(id__in=trending_ids, is_active=True)
-        posts_dict = {str(post.id): post for post in posts}
-        return [
-            posts_dict[post_id] for post_id in trending_ids if post_id in posts_dict
-        ]
+        posts_dict = {str(p.id): p for p in posts}
+        ordered_posts = [posts_dict[i] for i in trending_ids if i in posts_dict]
+
+        total_items = len(trending_ids)
+        return PostPaginationType(
+            items=ordered_posts,
+            total_items=total_items,
+            total_pages=ceil(total_items / items_per_page),
+            current_page=page,
+        )
 
 
 class CreatePost(graphene.Mutation):
@@ -248,9 +268,8 @@ class CreatePost(graphene.Mutation):
     def _invalidate_post_creation_caches(self, user_id):
         """Invalidate caches affected by new post creation"""
         pattern = f"user_posts_{user_id}_*"
-        keys_to_delete = redis_service.redis_client.keys(pattern)
-        if keys_to_delete:
-            redis_service.redis_client.delete(*keys_to_delete)
+        for k in redis_service.redis_client.scan_iter(match=pattern):
+            redis_service.redis_client.delete(k)
 
         feed_cache_service.invalidate_user_feed(user_id)
 
@@ -302,9 +321,8 @@ class UpdatePost(graphene.Mutation):
         feed_cache_service.invalidate_post_cache(post_id)
 
         pattern = f"user_posts_{user_id}_*"
-        keys_to_delete = redis_service.redis_client.keys(pattern)
-        if keys_to_delete:
-            redis_service.redis_client.delete(*keys_to_delete)
+        for k in redis_service.redis_client.scan_iter(match=pattern):
+            redis_service.redis_client.delete(k)
 
         feed_cache_service.invalidate_user_feed(user_id)
 
@@ -344,9 +362,8 @@ class DeletePost(graphene.Mutation):
         redis_service.delete_cached(f"post:{post_id}:shares", cache_name="counters")
 
         pattern = f"user_posts_{user_id}_*"
-        keys_to_delete = redis_service.redis_client.keys(pattern)
-        if keys_to_delete:
-            redis_service.redis_client.delete(*keys_to_delete)
+        for k in redis_service.redis_client.scan_iter(match=pattern):
+            redis_service.redis_client.delete(k)
 
 
 class PostMutation(graphene.ObjectType):
