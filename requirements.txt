@@ -5,3 +5,4 @@ django-graphql-jwt==0.3.4
 django-cors-headers==4.3.1
 python-decouple==3.8
 Pillow==10.0.1
+Faker==30.8.1
