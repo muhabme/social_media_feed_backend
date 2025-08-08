@@ -9,6 +9,7 @@ class Like(TimeStampedModel):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="likes")
 
     class Meta:
+        db_table = "likes"
         unique_together = ("user", "post")
 
 
@@ -18,10 +19,14 @@ class Comment(TimeStampedModel):
     content = models.TextField()
     parent = models.ForeignKey("self", on_delete=models.CASCADE, null=True, blank=True)
 
+    class Meta:
+        db_table = "comments"
+
 
 class Share(TimeStampedModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="shares")
 
     class Meta:
+        db_table = "shares"
         unique_together = ("user", "post")

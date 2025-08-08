@@ -13,4 +13,5 @@ class Post(TimeStampedModel):
     is_active = models.BooleanField(default=True)
 
     class Meta:
+        db_table = "posts"
         ordering = ["-created_at"]

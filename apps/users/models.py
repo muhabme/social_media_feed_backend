@@ -9,3 +9,6 @@ class UserProfile(TimeStampedModel):
     profile_picture = models.ImageField(upload_to="profiles/", blank=True)
     followers_count = models.PositiveIntegerField(default=0)
     following_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = "user_profiles"

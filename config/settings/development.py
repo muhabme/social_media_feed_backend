@@ -1,4 +1,5 @@
 from .base import *
+from decouple import config
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -8,8 +9,12 @@ ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 # Database for development (SQLite)
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": config("DB_NAME"),
+        "USER": config("DB_USER"),
+        "PASSWORD": config("DB_PASSWORD"),
+        "HOST": config("DB_HOST", default="localhost"),
+        "PORT": config("DB_PORT", default="54320"),
     }
 }
 
@@ -19,16 +24,18 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
 ]
 
-# GraphQL settings for development
-GRAPHENE = {
-    "SCHEMA": "graphql_api.schema.schema",
-    "MIDDLEWARE": [
-        "graphql_jwt.middleware.JSONWebTokenMiddleware",
-    ],
-}
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
 
 # Email backend for development (console)
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
 
 # Logging for development
 LOGGING = {
