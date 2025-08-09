@@ -1,6 +1,6 @@
 import pytest
-from django.test import TestCase
 from django.contrib.auth.models import User
+from django.test import TestCase
 
 pytestmark = pytest.mark.django_db
 
@@ -8,7 +8,7 @@ pytestmark = pytest.mark.django_db
 class RolePermissionModelTests(TestCase):
     def setUp(self):
         # Use unique test names to avoid cross-test collisions
-        from apps.users.models import Role, Permission
+        from apps.users.models import Permission, Role
 
         self.role, _ = Role.objects.get_or_create(
             name="test_role_models",
@@ -65,7 +65,7 @@ class RolePermissionModelTests(TestCase):
 
 class UserProfileModelTests(TestCase):
     def setUp(self):
-        from apps.users.models import Role, Permission, RolePermission
+        from apps.users.models import Permission, Role, RolePermission
 
         self.user = User.objects.create_user(
             username="testuser_models", email="test@example.com", password="testpass123"

@@ -1,6 +1,6 @@
 import pytest
-from django.test import Client as DjangoClient
 from django.contrib.auth.models import User
+from django.test import Client as DjangoClient
 
 pytest_plugins = ["pytest_django"]
 

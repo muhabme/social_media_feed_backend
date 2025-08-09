@@ -6,21 +6,25 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('posts', '0001_initial'),
+        ("posts", "0001_initial"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='post',
-            name='is_active',
+            model_name="post",
+            name="is_active",
             field=models.BooleanField(db_index=True, default=True),
         ),
         migrations.AddIndex(
-            model_name='post',
-            index=models.Index(fields=['author', 'created_at'], name='posts_author__d19a82_idx'),
+            model_name="post",
+            index=models.Index(
+                fields=["author", "created_at"], name="posts_author__d19a82_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='post',
-            index=models.Index(fields=['is_active', 'created_at'], name='posts_is_acti_2093a7_idx'),
+            model_name="post",
+            index=models.Index(
+                fields=["is_active", "created_at"], name="posts_is_acti_2093a7_idx"
+            ),
         ),
     ]

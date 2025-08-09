@@ -1,10 +1,13 @@
-from typing import List, Dict, Any, Optional
-from django.contrib.auth.models import User
-from django.db.models import QuerySet
-from apps.core.redis_service import redis_service
-from .models import Post
 import hashlib
 import json
+from typing import Any, Dict, List, Optional
+
+from django.contrib.auth.models import User
+from django.db.models import QuerySet
+
+from apps.core.redis_service import redis_service
+
+from .models import Post
 
 
 class FeedCacheService:

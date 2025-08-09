@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
 from django.test import TestCase
 
 pytest.importorskip(

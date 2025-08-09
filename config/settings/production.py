@@ -1,5 +1,6 @@
-from .base import *
 from decouple import config
+
+from .base import *
 
 DEBUG = False
 
@@ -27,7 +28,7 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_SECONDS = 31536000
 SECURE_REDIRECT_EXEMPT = []
-SECURE_PROXY_SSL_HEADER = ('X-Forwarded-Proto', 'https')
+SECURE_PROXY_SSL_HEADER = ("X-Forwarded-Proto", "https")
 SECURE_SSL_REDIRECT = False
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True

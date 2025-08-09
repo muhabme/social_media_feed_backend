@@ -1,6 +1,7 @@
 import pytest
-from django.test import override_settings, TestCase
 from django.core import mail
+from django.test import TestCase, override_settings
+
 
 @pytest.mark.django_db
 class EmailServiceTests(TestCase):

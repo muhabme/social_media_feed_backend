@@ -1,5 +1,6 @@
-from django.test import TestCase, Client as DjangoClient
 from django.contrib.auth import get_user_model
+from django.test import Client as DjangoClient
+from django.test import TestCase
 
 
 class GraphQLTestCase(TestCase):
@@ -18,7 +19,7 @@ class GraphQLTestCase(TestCase):
     @classmethod
     def _setup_permissions_and_roles(cls):
         # import here to avoid app import-time side-effects in some test runners
-        from apps.users.models import Role, Permission, RolePermission
+        from apps.users.models import Permission, Role, RolePermission
 
         permissions_data = [
             ("user:read", "user", "read", "User Read"),

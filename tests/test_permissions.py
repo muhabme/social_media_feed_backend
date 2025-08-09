@@ -1,6 +1,8 @@
-import pytest
 from unittest.mock import patch
-from django.contrib.auth.models import User, AnonymousUser
+
+import pytest
+from django.contrib.auth.models import AnonymousUser, User
+
 from tests.test_base import GraphQLTestCase
 
 pytestmark = pytest.mark.django_db

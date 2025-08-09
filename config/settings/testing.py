@@ -3,10 +3,11 @@ Test settings for Django project.
 Optimized for fast test execution.
 """
 
-from .base import *
-from datetime import timedelta
-import tempfile
 import os
+import tempfile
+from datetime import timedelta
+
+from .base import *
 
 # Testing flags
 DEBUG = False
