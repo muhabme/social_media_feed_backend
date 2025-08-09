@@ -1,16 +1,17 @@
 import os
 import random
-from faker import Faker
 
 import django
+from faker import Faker
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.base")
 django.setup()
 
 from django.contrib.auth.models import User
-from apps.users.models import UserProfile, Follow, Role
+
+from apps.interactions.models import Comment, Like, Share
 from apps.posts.models import Post
-from apps.interactions.models import Like, Comment, Share
+from apps.users.models import Follow, Role, UserProfile
 
 fake = Faker()
 

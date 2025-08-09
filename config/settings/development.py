@@ -1,5 +1,6 @@
-from .base import *
 from decouple import config
+
+from .base import *
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True

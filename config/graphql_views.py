@@ -1,9 +1,9 @@
-from django_ratelimit.exceptions import Ratelimited
-from django.utils.decorators import method_decorator
-from django_ratelimit.decorators import ratelimit
-from graphene_django.views import GraphQLView
 from django.http import JsonResponse
+from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+from django_ratelimit.decorators import ratelimit
+from django_ratelimit.exceptions import Ratelimited
+from graphene_django.views import GraphQLView
 
 
 def user_or_ip(*args):

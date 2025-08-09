@@ -1,24 +1,24 @@
-import graphene
-from graphene_django import DjangoObjectType
-from django.contrib.auth.models import User
-from django.contrib.auth import authenticate, login
-from .models import UserProfile, OTP, Follow, Role
-import graphql_jwt
-from utils.pagination import paginate_queryset
-from graphql_jwt.decorators import login_required
-from django.core.mail import send_mail
-from django.conf import settings
-from django.utils import timezone
 from datetime import timedelta
+
+import graphene
+import graphql_jwt
+from django.conf import settings
+from django.contrib.auth import authenticate, login
+from django.contrib.auth.models import User
+from django.core.mail import send_mail
 from django.db.models import Count
-from utils.monitoring import monitor_performance
-from apps.core.decorators import (
-    require_permission,
-    require_admin,
-    require_self_or_admin,
-)
-from apps.core.permissions import Permissions
+from django.utils import timezone
+from graphene_django import DjangoObjectType
+from graphql_jwt.decorators import login_required
+
+from apps.core.decorators import (require_admin, require_permission,
+                                  require_self_or_admin)
 from apps.core.models import ActivityLog
+from apps.core.permissions import Permissions
+from utils.monitoring import monitor_performance
+from utils.pagination import paginate_queryset
+
+from .models import OTP, Follow, Role, UserProfile
 
 
 class UserType(DjangoObjectType):

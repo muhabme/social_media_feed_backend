@@ -1,7 +1,9 @@
 from unittest.mock import Mock
-from graphql import GraphQLError
-from tests.test_base import GraphQLTestCase
+
 from django.contrib.auth import get_user_model
+from graphql import GraphQLError
+
+from tests.test_base import GraphQLTestCase
 
 
 class DecoratorTests(GraphQLTestCase):

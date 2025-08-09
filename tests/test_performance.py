@@ -1,9 +1,10 @@
 import pytest
-from django.test import TestCase
 from django.contrib.auth.models import User
-from apps.users.models import Role, Permission, UserProfile
-from django.test.utils import CaptureQueriesContext
 from django.db import connection
+from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
+
+from apps.users.models import Permission, Role, UserProfile
 
 
 @pytest.mark.django_db
