@@ -166,7 +166,7 @@ def resolve_user_feed(self, info, page=1, items_per_page=10):
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/muhabme/social-media-feed-backend.git
+   git clone https://github.com/muhabme/social_media_feed_backend
    cd social-media-feed-backend
    ```
 
@@ -242,7 +242,7 @@ def resolve_user_feed(self, info, page=1, items_per_page=10):
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/muhabme/social-media-feed-backend.git
+   git clone https://github.com/muhabme/social_media_feed_backend
    cd social-media-feed-backend
    ```
 
