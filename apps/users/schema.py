@@ -11,6 +11,7 @@ from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
 from django.db.models import Count
+from utils.monitoring import monitor_performance
 
 
 class UserType(DjangoObjectType):
@@ -66,12 +67,16 @@ class UserQuery(graphene.ObjectType):
         UserWithProfileType, user_id=graphene.Int(required=True)
     )
 
+    @monitor_performance("me")
+    @login_required
     def resolve_me(self, info):
         user = info.context.user
         if user.is_authenticated:
             return user
         return None
 
+    @monitor_performance("user")
+    @login_required
     def resolve_user(self, info, id=None, username=None):
         try:
             if id:
@@ -82,17 +87,23 @@ class UserQuery(graphene.ObjectType):
         except User.DoesNotExist:
             return None
 
+    @monitor_performance("all_users")
+    @login_required
     def resolve_all_users(self, info, page=1, items_per_page=10):
         qs = User.objects.filter(is_active=True).order_by("-created_at")
         data = paginate_queryset(qs, page, items_per_page)
         return UserPaginationType(**data)
 
+    @monitor_performance("user_profile")
+    @login_required
     def resolve_user_profile(self, info, user_id):
         try:
             return UserProfile.objects.get(user_id=user_id)
         except UserProfile.DoesNotExist:
             return None
 
+    @monitor_performance("user_with_profile")
+    @login_required
     def resolve_user_with_profile(self, info, user_id):
         try:
             user = (
@@ -140,6 +151,7 @@ class FollowQuery(graphene.ObjectType):
     following_count = graphene.Int(user_id=graphene.Int(required=True))
 
     @login_required
+    @monitor_performance("followers")
     def resolve_followers(self, info, user_id, page=1, items_per_page=10):
         qs = User.objects.filter(
             id__in=Follow.objects.filter(following_id=user_id).values_list(
@@ -149,6 +161,7 @@ class FollowQuery(graphene.ObjectType):
         data = paginate_queryset(qs, page, items_per_page)
         return FollowPaginationType(**data)
 
+    @monitor_performance("following")
     @login_required
     def resolve_following(self, info, user_id, page=1, items_per_page=10):
         qs = User.objects.filter(
@@ -159,6 +172,7 @@ class FollowQuery(graphene.ObjectType):
         data = paginate_queryset(qs, page, items_per_page)
         return FollowPaginationType(**data)
 
+    @monitor_performance("is_following")
     @login_required
     def resolve_is_following(self, info, user_id):
         current_user = info.context.user
@@ -168,10 +182,12 @@ class FollowQuery(graphene.ObjectType):
             follower=current_user, following_id=user_id
         ).exists()
 
+    @monitor_performance("followers_count")
     @login_required
     def resolve_followers_count(self, info, user_id):
         return Follow.objects.filter(following_id=user_id).count()
 
+    @monitor_performance("following_count")
     @login_required
     def resolve_following_count(self, info, user_id):
         return Follow.objects.filter(follower_id=user_id).count()
@@ -189,6 +205,8 @@ class UpdateUserProfile(graphene.Mutation):
     success = graphene.Boolean()
     message = graphene.String()
 
+    @monitor_performance("update_user_profile")
+    @login_required
     def mutate(self, info, user_id, bio=None, first_name=None, last_name=None):
         try:
             user = User.objects.get(pk=user_id)
@@ -238,6 +256,7 @@ class FollowUser(graphene.Mutation):
     message = graphene.String()
 
     @login_required
+    @monitor_performance("follow_user")
     def mutate(self, info, user_id):
         current_user = info.context.user
 
@@ -265,6 +284,7 @@ class UnfollowUser(graphene.Mutation):
     message = graphene.String()
 
     @login_required
+    @monitor_performance("unfollow_user")
     def mutate(self, info, user_id):
         current_user = info.context.user
 
@@ -295,6 +315,7 @@ class RegisterUser(graphene.Mutation):
         last_name = graphene.String()
         bio = graphene.String()
 
+    @monitor_performance("register_user")
     def mutate(
         self, info, username, email, password, first_name="", last_name="", bio=""
     ):
@@ -353,6 +374,7 @@ class VerifyEmailOTP(graphene.Mutation):
         email = graphene.String(required=True)
         otp_code = graphene.String(required=True)
 
+    @monitor_performance("verify_email_otp")
     def mutate(self, info, email, otp_code):
         otp_entry = (
             OTP.objects.filter(email=email, used=False).order_by("-created_at").first()
@@ -408,6 +430,7 @@ class ObtainJSONWebToken(graphql_jwt.JSONWebTokenMutation):
 class LogoutUser(graphene.Mutation):
     success = graphene.Boolean()
 
+    @monitor_performance("logout_user")
     def mutate(self, info):
         request = info.context
         request.session.flush()

@@ -7,6 +7,7 @@ from utils.pagination import paginate_queryset
 from graphql_jwt.decorators import login_required
 from django.db import transaction
 from django.db.models import F
+from utils.monitoring import monitor_performance
 
 
 class LikeType(DjangoObjectType):
@@ -103,17 +104,20 @@ class InteractionQuery(graphene.ObjectType):
     )
 
     # Like resolvers
+    @monitor_performance("post_likes")
     def resolve_post_likes(self, info, post_id, page=1, items_per_page=10):
         qs = Like.objects.filter(post_id=post_id).order_by("-created_at")
         data = paginate_queryset(qs, page, items_per_page)
         return LikePaginationType(**data)
 
+    @monitor_performance("user_likes")
     def resolve_user_likes(self, info, user_id, page=1, items_per_page=10):
         qs = Like.objects.filter(user_id=user_id).order_by("-created_at")
         data = paginate_queryset(qs, page, items_per_page)
         return LikePaginationType(**data)
 
     # Comment resolvers
+    @monitor_performance("post_comments")
     def resolve_post_comments(self, info, post_id, page=1, items_per_page=10):
         qs = Comment.objects.filter(post_id=post_id, parent__isnull=True).order_by(
             "-created_at"
@@ -121,28 +125,33 @@ class InteractionQuery(graphene.ObjectType):
         data = paginate_queryset(qs, page, items_per_page)
         return CommentPaginationType(**data)
 
+    @monitor_performance("user_comments")
     def resolve_user_comments(self, info, user_id, page=1, items_per_page=10):
         qs = Comment.objects.filter(author_id=user_id).order_by("-created_at")
         data = paginate_queryset(qs, page, items_per_page)
         return CommentPaginationType(**data)
 
+    @monitor_performance("comment_replies")
     def resolve_comment_replies(self, info, parent_id, page=1, items_per_page=10):
         qs = Comment.objects.filter(parent_id=parent_id).order_by("created_at")
         data = paginate_queryset(qs, page, items_per_page)
         return CommentPaginationType(**data)
 
     # Share resolvers
+    @monitor_performance("post_shares")
     def resolve_post_shares(self, info, post_id, page=1, items_per_page=10):
         qs = Share.objects.filter(post_id=post_id).order_by("-created_at")
         data = paginate_queryset(qs, page, items_per_page)
         return SharePaginationType(**data)
 
+    @monitor_performance("user_shares")
     def resolve_user_shares(self, info, user_id, page=1, items_per_page=10):
         qs = Share.objects.filter(user_id=user_id).order_by("-created_at")
         data = paginate_queryset(qs, page, items_per_page)
         return SharePaginationType(**data)
 
     # Interaction stats resolver
+    @monitor_performance("interaction_stats")
     def resolve_post_interaction_stats(self, info, post_id):
         try:
             post = Post.objects.get(pk=post_id)
@@ -179,6 +188,7 @@ class LikePost(graphene.Mutation):
     is_liked = graphene.Boolean()
 
     @login_required
+    @monitor_performance("like_post")
     def mutate(self, info, post_id):
         user = info.context.user
         try:
@@ -218,6 +228,7 @@ class CreateComment(graphene.Mutation):
     message = graphene.String()
 
     @login_required
+    @monitor_performance("create_comment")
     def mutate(self, info, post_id, content, parent_id=None):
         user = info.context.user
 
@@ -264,6 +275,7 @@ class SharePost(graphene.Mutation):
     message = graphene.String()
 
     @login_required
+    @monitor_performance("share_post")
     def mutate(self, info, post_id):
         user = info.context.user
 
@@ -306,6 +318,7 @@ class DeleteComment(graphene.Mutation):
     success = graphene.Boolean()
     message = graphene.String()
 
+    @monitor_performance("delete_comment")
     def mutate(self, info, comment_id):
         try:
             comment = Comment.objects.get(pk=comment_id)
