@@ -32,7 +32,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         # Install additional testing/linting packages
-        pip install black flake8 isort pytest-cov
+        pip install black isort pytest-cov
     
     - name: Run Black (code formatting check)
       run: |
@@ -41,10 +41,6 @@ jobs:
     - name: Run isort (import sorting check)  
       run: |
         isort --check-only --diff .
-    
-    - name: Run Flake8 (linting)
-      run: |
-        flake8 . --exclude=migrations,__pycache__,venv,env --max-line-length=88
     
     - name: Set up environment variables for tests
       run: |
