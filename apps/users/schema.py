@@ -74,8 +74,8 @@ class UserQuery(graphene.ObjectType):
         UserWithProfileType, user_id=graphene.Int(required=True)
     )
 
-    @monitor_performance("me")
     @login_required
+    @monitor_performance("me")
     @require_permission(Permissions.USER_READ, resource="user", log_activity=True)
     def resolve_me(self, info):
         user = info.context.user
@@ -257,7 +257,7 @@ class UpdateUserProfile(graphene.Mutation):
 
     @monitor_performance("update_user_profile")
     @login_required
-    @require_permission(Permissions.USER_UPDATE, resource="user", log_activity=True)
+    @require_self_or_admin(user_field="user_id", log_activity=True)
     def mutate(self, info, user_id, bio=None, first_name=None, last_name=None):
         try:
             user = User.objects.get(pk=user_id)
