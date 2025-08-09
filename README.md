@@ -995,5 +995,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 If this project helps you, please give it a star! ⭐
 
 ---
-
-**Built with ❤️ for scalable social media platforms**
