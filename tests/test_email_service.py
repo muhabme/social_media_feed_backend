@@ -2,6 +2,7 @@ import pytest
 from django.test import override_settings, TestCase
 from django.core import mail
 
+
 @pytest.mark.django_db
 class EmailServiceTests(TestCase):
     @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")

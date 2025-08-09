@@ -9,56 +9,84 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('interactions', '0001_initial'),
+        ("interactions", "0001_initial"),
     ]
 
     operations = [
         migrations.AlterUniqueTogether(
-            name='like',
+            name="like",
             unique_together=set(),
         ),
         migrations.AlterUniqueTogether(
-            name='share',
+            name="share",
             unique_together=set(),
         ),
         migrations.AlterField(
-            model_name='comment',
-            name='author',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='comments', to=settings.AUTH_USER_MODEL),
+            model_name="comment",
+            name="author",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="comments",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AlterField(
-            model_name='comment',
-            name='parent',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='replies', to='interactions.comment'),
+            model_name="comment",
+            name="parent",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="replies",
+                to="interactions.comment",
+            ),
         ),
         migrations.AlterField(
-            model_name='like',
-            name='user',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='likes', to=settings.AUTH_USER_MODEL),
+            model_name="like",
+            name="user",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="likes",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AlterField(
-            model_name='share',
-            name='user',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='shares', to=settings.AUTH_USER_MODEL),
+            model_name="share",
+            name="user",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="shares",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AddIndex(
-            model_name='comment',
-            index=models.Index(fields=['post', 'created_at'], name='comments_post_id_015fcc_idx'),
+            model_name="comment",
+            index=models.Index(
+                fields=["post", "created_at"], name="comments_post_id_015fcc_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='like',
-            index=models.Index(fields=['post', 'user'], name='likes_post_id_063a9e_idx'),
+            model_name="like",
+            index=models.Index(
+                fields=["post", "user"], name="likes_post_id_063a9e_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='share',
-            index=models.Index(fields=['post', 'user'], name='shares_post_id_04a723_idx'),
+            model_name="share",
+            index=models.Index(
+                fields=["post", "user"], name="shares_post_id_04a723_idx"
+            ),
         ),
         migrations.AddConstraint(
-            model_name='like',
-            constraint=models.UniqueConstraint(fields=('user', 'post'), name='unique_like_per_user_post'),
+            model_name="like",
+            constraint=models.UniqueConstraint(
+                fields=("user", "post"), name="unique_like_per_user_post"
+            ),
         ),
         migrations.AddConstraint(
-            model_name='share',
-            constraint=models.UniqueConstraint(fields=('user', 'post'), name='unique_share_per_user_post'),
+            model_name="share",
+            constraint=models.UniqueConstraint(
+                fields=("user", "post"), name="unique_share_per_user_post"
+            ),
         ),
     ]

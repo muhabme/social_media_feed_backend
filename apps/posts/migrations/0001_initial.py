@@ -15,22 +15,37 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Post',
+            name="Post",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('content', models.TextField()),
-                ('image', models.ImageField(blank=True, null=True, upload_to='posts/')),
-                ('likes_count', models.PositiveIntegerField(default=0)),
-                ('comments_count', models.PositiveIntegerField(default=0)),
-                ('shares_count', models.PositiveIntegerField(default=0)),
-                ('is_active', models.BooleanField(default=True)),
-                ('author', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='posts', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("content", models.TextField()),
+                ("image", models.ImageField(blank=True, null=True, upload_to="posts/")),
+                ("likes_count", models.PositiveIntegerField(default=0)),
+                ("comments_count", models.PositiveIntegerField(default=0)),
+                ("shares_count", models.PositiveIntegerField(default=0)),
+                ("is_active", models.BooleanField(default=True)),
+                (
+                    "author",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="posts",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'db_table': 'posts',
-                'ordering': ['-created_at'],
+                "db_table": "posts",
+                "ordering": ["-created_at"],
             },
         ),
     ]
