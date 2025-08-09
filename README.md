@@ -167,7 +167,7 @@ def resolve_user_feed(self, info, page=1, items_per_page=10):
 
    ```bash
    git clone https://github.com/muhabme/social_media_feed_backend
-   cd social-media-feed-backend
+   cd social_media_feed_backend
    ```
 
 2. **Set up virtual environment**
@@ -243,7 +243,7 @@ def resolve_user_feed(self, info, page=1, items_per_page=10):
 
    ```bash
    git clone https://github.com/muhabme/social_media_feed_backend
-   cd social-media-feed-backend
+   cd social_media_feed_backend
    ```
 
 2. **Choose your environment setup**
@@ -986,8 +986,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🆘 Support
 
 - **Documentation**: Check the `/docs` folder
-- **Issues**: [GitHub Issues](https://github.com/muhabme/social-media-feed-backend/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/muhabme/social-media-feed-backend/discussions)
+- **Issues**: [GitHub Issues](https://github.com/muhabme/social_media_feed_backend/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/muhabme/social_media_feed_backend/discussions)
 - **Performance Issues**: Include Redis stats and cache hit rates
 
 ## ⭐ Star History
