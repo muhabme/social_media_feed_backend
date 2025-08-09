@@ -20,8 +20,14 @@ from django.urls import path
 from .graphql_views import RateLimitedGraphQLView
 from graphql_api.schema import schema
 from django.views.generic import TemplateView
+from django.http import JsonResponse
+
+def health_check(request):
+    return JsonResponse({"status": "ok"})
+
 
 urlpatterns = [
+    path("health/", health_check),
     path("admin/", admin.site.urls),
     path("graphql/", RateLimitedGraphQLView.as_view(graphiql=True, schema=schema)),
     path(

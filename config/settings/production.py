@@ -3,6 +3,8 @@ from decouple import config
 
 DEBUG = False
 
+SECRET_KEY = config("SECRET_KEY")
+
 ALLOWED_HOSTS = config(
     "ALLOWED_HOSTS", cast=lambda v: [s.strip() for s in v.split(",")]
 )
@@ -25,7 +27,8 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_SECONDS = 31536000
 SECURE_REDIRECT_EXEMPT = []
-SECURE_SSL_REDIRECT = True
+SECURE_PROXY_SSL_HEADER = ('X-Forwarded-Proto', 'https')
+SECURE_SSL_REDIRECT = False
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 

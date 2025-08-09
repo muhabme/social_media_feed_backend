@@ -1,6 +1,6 @@
 from decouple import config
 
-REDIS_URL = f"redis://{config("REDIS_HOST", default="redis")}:{config("REDIS_PORT", default="6379")}"
+REDIS_URL = f"redis://{config('REDIS_HOST', default='redis')}:{config('REDIS_PORT', default='6379')}"
 
 # Django Cache Configuration
 CACHES = {

@@ -1,5 +1,8 @@
 __pycache__/
 venv/
 .env
+.env.development
+.env.production
 db.sqlite3
 *.log
+ssl/
