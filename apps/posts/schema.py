@@ -10,6 +10,8 @@ from math import ceil
 from apps.interactions.models import Comment
 from django.db.models import Prefetch
 from utils.monitoring import monitor_performance
+from apps.core.decorators import require_permission
+from apps.core.permissions import Permissions
 
 
 class PostType(DjangoObjectType):
@@ -22,18 +24,24 @@ class PostType(DjangoObjectType):
         fields = "__all__"
 
     @monitor_performance("likes_count")
+    @login_required
+    @require_permission(Permissions.POST_READ, resource="post", log_activity=True)
     def resolve_likes_count(self, info):
         """Get real-time like count from Redis"""
         cached_count = redis_service.get_counter(f"post:{self.id}:likes")
         return cached_count if cached_count is not None else self.likes_count
 
     @monitor_performance("comments_count")
+    @login_required
+    @require_permission(Permissions.POST_READ, resource="post", log_activity=True)
     def resolve_comments_count(self, info):
         """Get real-time comment count from Redis"""
         cached_count = redis_service.get_counter(f"post:{self.id}:comments")
         return cached_count if cached_count is not None else self.comments_count
 
     @monitor_performance("is_liked")
+    @login_required
+    @require_permission(Permissions.POST_READ, resource="post", log_activity=True)
     def resolve_is_liked(self, info):
         """Check if current user liked this post"""
         if not info.context.user.is_authenticated:
@@ -69,8 +77,9 @@ class PostQuery(graphene.ObjectType):
         items_per_page=graphene.Int(required=False),
     )
 
-    @login_required
     @monitor_performance("post")
+    @login_required
+    @require_permission(Permissions.POST_READ, resource="post", log_activity=True)
     def resolve_post(self, info, id):
         """Get single post with caching"""
         cached_post = feed_cache_service.get_cached_post(id)
@@ -98,6 +107,7 @@ class PostQuery(graphene.ObjectType):
 
     @login_required
     @monitor_performance("posts_by_user")
+    @require_permission(Permissions.POST_READ, resource="post", log_activity=True)
     def resolve_posts_by_user(self, info, user_id, page=1, items_per_page=10):
         """Get user's posts with caching"""
 
@@ -143,6 +153,7 @@ class PostQuery(graphene.ObjectType):
 
     @login_required
     @monitor_performance("user_feed")
+    @require_permission(Permissions.POST_READ, resource="post", log_activity=True)
     def resolve_user_feed(self, info, page=1, items_per_page=10):
         """Get user's personalized feed with caching"""
         user = info.context.user
@@ -200,6 +211,7 @@ class PostQuery(graphene.ObjectType):
 
     @login_required
     @monitor_performance("trending_posts")
+    @require_permission(Permissions.POST_READ, resource="post", log_activity=True)
     def resolve_trending_posts(self, info, page=1, items_per_page=10):
         start = (page - 1) * items_per_page
         limit = items_per_page
@@ -241,6 +253,7 @@ class CreatePost(graphene.Mutation):
 
     @login_required
     @monitor_performance("create_post")
+    @require_permission(Permissions.POST_CREATE, resource="post", log_activity=True)
     def mutate(self, info, content, image_url=None):
         user = info.context.user
 
@@ -294,6 +307,7 @@ class UpdatePost(graphene.Mutation):
 
     @login_required
     @monitor_performance("update_post")
+    @require_permission(Permissions.POST_UPDATE, resource="post", log_activity=True)
     def mutate(self, info, post_id, content):
         user = info.context.user
 
@@ -346,6 +360,7 @@ class DeletePost(graphene.Mutation):
 
     @login_required
     @monitor_performance("delete_post")
+    @require_permission(Permissions.POST_DELETE, resource="post", log_activity=True)
     def mutate(self, info, post_id):
         user = info.context.user
 

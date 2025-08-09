@@ -12,16 +12,88 @@ from apps.core.models import TimeStampedModel
 SECRET = settings.SECRET_KEY.encode()
 
 
+class Role(TimeStampedModel):
+    name = models.CharField(max_length=50, unique=True, db_index=True)
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = "roles"
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
+class Permission(TimeStampedModel):
+    name = models.CharField(max_length=100, unique=True, db_index=True)
+    codename = models.CharField(max_length=100, unique=True, db_index=True)
+    description = models.TextField(blank=True)
+    resource = models.CharField(max_length=50, db_index=True)
+    action = models.CharField(max_length=50, db_index=True)
+
+    class Meta:
+        db_table = "permissions"
+        indexes = [
+            models.Index(fields=["resource", "action"]),
+        ]
+        ordering = ["resource", "action"]
+
+    def __str__(self):
+        return f"{self.resource}:{self.action}"
+
+
+class RolePermission(TimeStampedModel):
+    role = models.ForeignKey(
+        Role, on_delete=models.CASCADE, related_name="role_permissions"
+    )
+    permission = models.ForeignKey(
+        Permission, on_delete=models.CASCADE, related_name="role_permissions"
+    )
+
+    class Meta:
+        db_table = "role_permissions"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["role", "permission"], name="unique_role_permission"
+            )
+        ]
+        indexes = [
+            models.Index(fields=["role", "permission"]),
+        ]
+
+    def __str__(self):
+        return f"{self.role.name} - {self.permission.codename}"
+
+
 class UserProfile(TimeStampedModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
     bio = models.TextField(max_length=500, blank=True)
     profile_picture = models.ImageField(upload_to="profiles/", blank=True, null=True)
+    role = models.ForeignKey(
+        Role, on_delete=models.PROTECT, related_name="users", null=True, blank=True
+    )
 
     class Meta:
         db_table = "user_profiles"
 
     def __str__(self):
         return f"profile:{self.user.username}"
+
+    def has_permission(self, permission_codename):
+        if not self.role or not self.role.is_active:
+            return False
+
+        return (
+            self.role.role_permissions.select_related("permission")
+            .filter(permission__codename=permission_codename)
+            .exists()
+        )
+
+    def get_permissions(self):
+        if not self.role or not self.role.is_active:
+            return Permission.objects.none()
+        return Permission.objects.filter(role_permissions__role=self.role)
 
 
 class Follow(TimeStampedModel):

@@ -2,7 +2,7 @@ import graphene
 from graphene_django import DjangoObjectType
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login
-from .models import UserProfile, OTP, Follow
+from .models import UserProfile, OTP, Follow, Role
 import graphql_jwt
 from utils.pagination import paginate_queryset
 from graphql_jwt.decorators import login_required
@@ -12,6 +12,13 @@ from django.utils import timezone
 from datetime import timedelta
 from django.db.models import Count
 from utils.monitoring import monitor_performance
+from apps.core.decorators import (
+    require_permission,
+    require_admin,
+    require_self_or_admin,
+)
+from apps.core.permissions import Permissions
+from apps.core.models import ActivityLog
 
 
 class UserType(DjangoObjectType):
@@ -69,6 +76,7 @@ class UserQuery(graphene.ObjectType):
 
     @monitor_performance("me")
     @login_required
+    @require_self_or_admin(log_activity=True)
     def resolve_me(self, info):
         user = info.context.user
         if user.is_authenticated:
@@ -77,6 +85,7 @@ class UserQuery(graphene.ObjectType):
 
     @monitor_performance("user")
     @login_required
+    @require_permission(Permissions.USER_READ, resource="user", log_activity=True)
     def resolve_user(self, info, id=None, username=None):
         try:
             if id:
@@ -89,6 +98,7 @@ class UserQuery(graphene.ObjectType):
 
     @monitor_performance("all_users")
     @login_required
+    @require_permission(Permissions.USER_READ, resource="user", log_activity=True)
     def resolve_all_users(self, info, page=1, items_per_page=10):
         qs = User.objects.filter(is_active=True).order_by("-created_at")
         data = paginate_queryset(qs, page, items_per_page)
@@ -96,6 +106,7 @@ class UserQuery(graphene.ObjectType):
 
     @monitor_performance("user_profile")
     @login_required
+    @require_permission(Permissions.USER_READ, resource="user", log_activity=True)
     def resolve_user_profile(self, info, user_id):
         try:
             return UserProfile.objects.get(user_id=user_id)
@@ -104,6 +115,7 @@ class UserQuery(graphene.ObjectType):
 
     @monitor_performance("user_with_profile")
     @login_required
+    @require_permission(Permissions.USER_READ, resource="user", log_activity=True)
     def resolve_user_with_profile(self, info, user_id):
         try:
             user = (
@@ -150,8 +162,9 @@ class FollowQuery(graphene.ObjectType):
     followers_count = graphene.Int(user_id=graphene.Int(required=True))
     following_count = graphene.Int(user_id=graphene.Int(required=True))
 
-    @login_required
     @monitor_performance("followers")
+    @login_required
+    @require_permission(Permissions.USER_READ, resource="user", log_activity=True)
     def resolve_followers(self, info, user_id, page=1, items_per_page=10):
         qs = User.objects.filter(
             id__in=Follow.objects.filter(following_id=user_id).values_list(
@@ -163,6 +176,7 @@ class FollowQuery(graphene.ObjectType):
 
     @monitor_performance("following")
     @login_required
+    @require_permission(Permissions.USER_READ, resource="user", log_activity=True)
     def resolve_following(self, info, user_id, page=1, items_per_page=10):
         qs = User.objects.filter(
             id__in=Follow.objects.filter(follower_id=user_id).values_list(
@@ -174,6 +188,7 @@ class FollowQuery(graphene.ObjectType):
 
     @monitor_performance("is_following")
     @login_required
+    @require_permission(Permissions.USER_READ, resource="user", log_activity=True)
     def resolve_is_following(self, info, user_id):
         current_user = info.context.user
         if not current_user.is_authenticated:
@@ -184,13 +199,48 @@ class FollowQuery(graphene.ObjectType):
 
     @monitor_performance("followers_count")
     @login_required
+    @require_permission(Permissions.USER_READ, resource="user", log_activity=True)
     def resolve_followers_count(self, info, user_id):
         return Follow.objects.filter(following_id=user_id).count()
 
     @monitor_performance("following_count")
     @login_required
+    @require_permission(Permissions.USER_READ, resource="user", log_activity=True)
     def resolve_following_count(self, info, user_id):
         return Follow.objects.filter(follower_id=user_id).count()
+
+
+class ActivityLogType(DjangoObjectType):
+    class Meta:
+        model = ActivityLog
+        fields = "__all__"
+
+
+class ActivityLogPaginationType(graphene.ObjectType):
+    items = graphene.List(ActivityLogType)
+    total_items = graphene.Int()
+    total_pages = graphene.Int()
+    current_page = graphene.Int()
+
+
+class AdminQuery(graphene.ObjectType):
+    activity_logs = graphene.Field(
+        ActivityLogPaginationType,
+        user_id=graphene.Int(required=False),
+        page=graphene.Int(required=False),
+        items_per_page=graphene.Int(required=False),
+    )
+
+    @monitor_performance("activity_logs")
+    @login_required
+    @require_admin(log_activity=True)
+    def resolve_activity_logs(self, info, user_id=None, page=1, items_per_page=10):
+        qs = ActivityLog.objects.all()
+        if user_id is not None:
+            qs = qs.filter(user_id=user_id)
+        qs = qs.order_by("-created_at")
+        data = paginate_queryset(qs, page, items_per_page)
+        return ActivityLogPaginationType(**data)
 
 
 class UpdateUserProfile(graphene.Mutation):
@@ -207,6 +257,7 @@ class UpdateUserProfile(graphene.Mutation):
 
     @monitor_performance("update_user_profile")
     @login_required
+    @require_permission(Permissions.USER_UPDATE, resource="user", log_activity=True)
     def mutate(self, info, user_id, bio=None, first_name=None, last_name=None):
         try:
             user = User.objects.get(pk=user_id)
@@ -255,8 +306,9 @@ class FollowUser(graphene.Mutation):
     success = graphene.Boolean()
     message = graphene.String()
 
-    @login_required
     @monitor_performance("follow_user")
+    @login_required
+    @require_permission(Permissions.FOLLOW_CREATE, resource="follow", log_activity=True)
     def mutate(self, info, user_id):
         current_user = info.context.user
 
@@ -283,8 +335,9 @@ class UnfollowUser(graphene.Mutation):
     success = graphene.Boolean()
     message = graphene.String()
 
-    @login_required
     @monitor_performance("unfollow_user")
+    @login_required
+    @require_permission(Permissions.FOLLOW_DELETE, resource="follow", log_activity=True)
     def mutate(self, info, user_id):
         current_user = info.context.user
 
@@ -408,7 +461,11 @@ class VerifyEmailOTP(graphene.Mutation):
                 first_name=data.get("first_name", ""),
                 last_name=data.get("last_name", ""),
             )
-            UserProfile.objects.create(user=user, bio=data.get("bio", ""))
+            UserProfile.objects.create(
+                user=user,
+                bio=data.get("bio", ""),
+                role=Role.objects.filter(name="user").first(),
+            )
             otp_entry.delete()
             return VerifyEmailOTP(
                 success=True, message="User created successfully!", user=user

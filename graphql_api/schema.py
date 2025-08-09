@@ -6,11 +6,14 @@ from apps.users.schema import (
     UserMutation,
     FollowQuery,
     FollowMutation,
+    AdminQuery,
 )
 from apps.interactions.schema import InteractionQuery, InteractionMutation
 
 
-class Query(PostQuery, UserQuery, FollowQuery, InteractionQuery, graphene.ObjectType):
+class Query(
+    PostQuery, UserQuery, AdminQuery, FollowQuery, InteractionQuery, graphene.ObjectType
+):
     pass
 
 

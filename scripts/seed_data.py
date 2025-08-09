@@ -8,7 +8,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.base")
 django.setup()
 
 from django.contrib.auth.models import User
-from apps.users.models import UserProfile, Follow
+from apps.users.models import UserProfile, Follow, Role
 from apps.posts.models import Post
 from apps.interactions.models import Like, Comment, Share
 
@@ -26,6 +26,7 @@ def seed_users(n=10):
             user=user,
             bio=fake.text(max_nb_chars=120),
             profile_picture="",
+            role=Role.objects.filter(name="user").first(),
         )
         users.append(user)
     return users
