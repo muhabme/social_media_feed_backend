@@ -1,10 +1,11 @@
+import hashlib
 import json
 import time
-import hashlib
-from typing import Any, Optional, List, Dict
-from django.core.cache import cache, caches
-from django.conf import settings
+from typing import Any, Dict, List, Optional
+
 import redis
+from django.conf import settings
+from django.core.cache import cache, caches
 
 
 class RedisService:

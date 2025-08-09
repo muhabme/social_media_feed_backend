@@ -1,7 +1,9 @@
 from unittest.mock import Mock
-from django.db import connection
-from tests.test_base import GraphQLTestCase
+
 from django.contrib.auth import get_user_model
+from django.db import connection
+
+from tests.test_base import GraphQLTestCase
 
 
 class UtilsTests(GraphQLTestCase):

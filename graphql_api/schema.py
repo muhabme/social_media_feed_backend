@@ -1,14 +1,15 @@
 import graphene
-from apps.posts.schema import PostQuery, PostMutation
+
+from apps.interactions.schema import InteractionMutation, InteractionQuery
+from apps.posts.schema import PostMutation, PostQuery
 from apps.users.schema import (
-    AuthMutation,
-    UserQuery,
-    UserMutation,
-    FollowQuery,
-    FollowMutation,
     AdminQuery,
+    AuthMutation,
+    FollowMutation,
+    FollowQuery,
+    UserMutation,
+    UserQuery,
 )
-from apps.interactions.schema import InteractionQuery, InteractionMutation
 
 
 class Query(

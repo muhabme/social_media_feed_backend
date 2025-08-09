@@ -1,7 +1,9 @@
 import json
+
 import pytest
-from tests.test_base import GraphQLTestCase
 from django.contrib.auth.models import User
+
+from tests.test_base import GraphQLTestCase
 
 pytestmark = pytest.mark.django_db
 

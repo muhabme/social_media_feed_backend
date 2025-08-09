@@ -16,11 +16,14 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path
-from .graphql_views import RateLimitedGraphQLView
-from graphql_api.schema import schema
-from django.views.generic import TemplateView
 from django.http import JsonResponse
+from django.urls import path
+from django.views.generic import TemplateView
+
+from graphql_api.schema import schema
+
+from .graphql_views import RateLimitedGraphQLView
+
 
 def health_check(request):
     return JsonResponse({"status": "ok"})

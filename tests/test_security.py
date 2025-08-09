@@ -1,7 +1,9 @@
-from tests.test_base import GraphQLTestCase
-from django.contrib.auth.models import User
 import json
+
+from django.contrib.auth.models import User
 from django.test import Client as DjangoClient
+
+from tests.test_base import GraphQLTestCase
 
 
 class SecurityTests(GraphQLTestCase):

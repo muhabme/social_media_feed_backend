@@ -1,7 +1,8 @@
 import functools
 import time
-from graphql import GraphQLError
+
 from django.contrib.auth.models import AnonymousUser
+from graphql import GraphQLError
 
 
 def require_permission(permission_codename, resource=None, log_activity=True):
