@@ -44,12 +44,31 @@ jobs:
     
     - name: Set up environment variables for tests
       run: |
-        echo "SECRET_KEY=test-secret-key-for-ci-$(openssl rand -hex 16)" >> $GITHUB_ENV
         echo "DEBUG=False" >> $GITHUB_ENV
+        echo "SECRET_KEY=test-secret-key-for-ci-$(openssl rand -hex 16)" >> $GITHUB_ENV
+
+        # Database settings
+        echo "DB_NAME=test_db" >> $GITHUB_ENV
+        echo "DB_USER=test_user" >> $GITHUB_ENV
+        echo "DB_PASSWORD=test_password" >> $GITHUB_ENV
+        echo "DB_HOST=localhost" >> $GITHUB_ENV
+        echo "DB_PORT=5432" >> $GITHUB_ENV
+
+        # Redis Settings
+        echo "REDIS_HOST=localhost" >> $GITHUB_ENV
+        echo "REDIS_PORT=6379" >> $GITHUB_ENV
+
+        # Security settings
         echo "JWT_SECRET_KEY=test-jwt-secret-$(openssl rand -hex 16)" >> $GITHUB_ENV
-        echo "DJANGO_SETTINGS_MODULE=config.settings.testing" >> $GITHUB_ENV
         echo "ALLOWED_HOSTS=localhost,127.0.0.1" >> $GITHUB_ENV
-        echo "CORS_ALLOWED_ORIGINS=http://localhost:3000" >> $GITHUB_ENV
+        echo "CORS_ALLOWED_ORIGINS=http://localhost:8000" >> $GITHUB_ENV
+
+        # Email settings
+        echo "EMAIL_HOST=localhost" >> $GITHUB_ENV
+        echo "EMAIL_PORT=1025" >> $GITHUB_ENV
+        echo "EMAIL_USE_TLS=False" >> $GITHUB_ENV
+        echo "EMAIL_HOST_USER=" >> $GITHUB_ENV
+        echo "EMAIL_HOST_PASSWORD=" >> $GITHUB_ENV
     
     - name: Run tests with coverage
       run: |
