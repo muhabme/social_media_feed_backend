@@ -251,10 +251,11 @@ class CreatePost(graphene.Mutation):
     success = graphene.Boolean()
     message = graphene.String()
 
+    @staticmethod
     @login_required
     @monitor_performance("create_post")
     @require_permission(Permissions.POST_CREATE, resource="post", log_activity=True)
-    def mutate(self, info, content, image_url=None):
+    def mutate(root, info, content, image_url=None):
         user = info.context.user
 
         try:
@@ -277,7 +278,8 @@ class CreatePost(graphene.Mutation):
                 f"post:{post.id}:comments", 0, cache_name="counters", timeout=None
             )
 
-            self._invalidate_post_creation_caches(user.id)
+            # Call the method as a static method or move the logic inline
+            CreatePost._invalidate_post_creation_caches(user.id)
 
             return CreatePost(
                 post=post, success=True, message="Post created successfully!"
@@ -287,7 +289,8 @@ class CreatePost(graphene.Mutation):
                 post=None, success=False, message=f"Error creating post: {str(e)}"
             )
 
-    def _invalidate_post_creation_caches(self, user_id):
+    @staticmethod
+    def _invalidate_post_creation_caches(user_id):
         """Invalidate caches affected by new post creation"""
         pattern = f"user_posts_{user_id}_*"
         for k in redis_service.redis_client.scan_iter(match=pattern):
@@ -305,10 +308,11 @@ class UpdatePost(graphene.Mutation):
     success = graphene.Boolean()
     message = graphene.String()
 
+    @staticmethod
     @login_required
     @monitor_performance("update_post")
     @require_permission(Permissions.POST_UPDATE, resource="post", log_activity=True)
-    def mutate(self, info, post_id, content):
+    def mutate(root, info, post_id, content):
         user = info.context.user
 
         try:
@@ -328,7 +332,7 @@ class UpdatePost(graphene.Mutation):
             }
             feed_cache_service.cache_post_details(post.id, post_data)
 
-            self._invalidate_post_update_caches(user.id, post_id)
+            UpdatePost._invalidate_post_update_caches(user.id, post_id)
 
             return UpdatePost(
                 post=post, success=True, message="Post updated successfully!"
@@ -340,7 +344,8 @@ class UpdatePost(graphene.Mutation):
                 message="Post not found or you don't have permission",
             )
 
-    def _invalidate_post_update_caches(self, user_id, post_id):
+    @staticmethod
+    def _invalidate_post_update_caches(user_id, post_id):
         """Invalidate caches affected by post update"""
         feed_cache_service.invalidate_post_cache(post_id)
 
@@ -358,10 +363,11 @@ class DeletePost(graphene.Mutation):
     success = graphene.Boolean()
     message = graphene.String()
 
+    @staticmethod
     @login_required
     @monitor_performance("delete_post")
     @require_permission(Permissions.POST_DELETE, resource="post", log_activity=True)
-    def mutate(self, info, post_id):
+    def mutate(root, info, post_id):
         user = info.context.user
 
         try:
@@ -369,7 +375,7 @@ class DeletePost(graphene.Mutation):
             post.is_active = False  # Soft delete
             post.save()
 
-            self._cleanup_deleted_post_caches(user.id, post_id)
+            DeletePost._cleanup_deleted_post_caches(user.id, post_id)
 
             return DeletePost(success=True, message="Post deleted successfully!")
         except Post.DoesNotExist:
@@ -377,7 +383,8 @@ class DeletePost(graphene.Mutation):
                 success=False, message="Post not found or you don't have permission"
             )
 
-    def _cleanup_deleted_post_caches(self, user_id, post_id):
+    @staticmethod
+    def _cleanup_deleted_post_caches(user_id, post_id):
         """Clean up caches for deleted post"""
         feed_cache_service.invalidate_post_cache(post_id)
 

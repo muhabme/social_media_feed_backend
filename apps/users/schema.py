@@ -76,7 +76,7 @@ class UserQuery(graphene.ObjectType):
 
     @monitor_performance("me")
     @login_required
-    @require_self_or_admin(log_activity=True)
+    @require_permission(Permissions.USER_READ, resource="user", log_activity=True)
     def resolve_me(self, info):
         user = info.context.user
         if user.is_authenticated:
