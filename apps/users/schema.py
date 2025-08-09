@@ -11,8 +11,11 @@ from django.utils import timezone
 from graphene_django import DjangoObjectType
 from graphql_jwt.decorators import login_required
 
-from apps.core.decorators import (require_admin, require_permission,
-                                  require_self_or_admin)
+from apps.core.decorators import (
+    require_admin,
+    require_permission,
+    require_self_or_admin,
+)
 from apps.core.models import ActivityLog
 from apps.core.permissions import Permissions
 from utils.monitoring import monitor_performance
