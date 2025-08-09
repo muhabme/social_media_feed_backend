@@ -41,7 +41,7 @@ WORKDIR /app
 COPY --chown=appuser:appuser . /app/
 
 # Create directories for static/media files
-RUN mkdir -p /app/staticfiles /app/media && chown -R appuser:appuser /app
+RUN mkdir -p /app/staticfiles /app/media /app/logs && chown -R appuser:appuser /app
 
 # Copy and make entrypoint executable
 COPY ./deployment/entrypoint.sh /entrypoint.sh
