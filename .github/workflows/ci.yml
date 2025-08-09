@@ -81,14 +81,10 @@ jobs:
         echo "EMAIL_HOST_USER=" >> $GITHUB_ENV
         echo "EMAIL_HOST_PASSWORD=" >> $GITHUB_ENV
     
-    - name: Install redis-cli
-      run: sudo apt-get update && sudo apt-get install -y redis-tools
-
-    - name: Wait for services to be ready
-      run: |        
-        # Wait for Redis
+    - name: Wait for Redis
+      run: |
         for i in {1..30}; do
-          if redis-cli -h localhost -p 6379 ping | grep -q PONG; then
+          if timeout 5 bash -c "</dev/tcp/localhost/6379"; then
             echo "Redis is ready"
             break
           fi
