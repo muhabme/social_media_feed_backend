@@ -49,8 +49,7 @@ social_media_feed_backend/
 │   ├── core/                      # Shared utilities, permissions & Redis service
 │   ├── users/                     # User management & RBAC
 │   ├── posts/                     # Post management with feed caching
-│   ├── interactions/              # Likes, comments, shares with Redis counters
-│   └── analytics/                 # Usage analytics (optional)
+│   └── interactions/              # Likes, comments, shares with Redis counters
 ├── graphql_api/                   # GraphQL schema configuration
 ├── config/                        # Django settings and configuration
 ├── tests/                         # Comprehensive test suite
